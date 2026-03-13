@@ -113,11 +113,10 @@ jobs:
             --title "v$VERSION" \
             --notes-file release_notes.md
 
-      # TODO: Uncomment after dry-run testing of the workflow.
       # Publish last — pub.dev uploads are irreversible, while git tags and
       # GitHub releases can be deleted and recreated if earlier steps fail.
-      # - name: Publish to pub.dev
-      #   run: dart pub publish --force
+      - name: Publish to pub.dev
+        run: dart pub publish --force
 
       - name: Summary
         run: |

@@ -2,7 +2,7 @@
 
 ## Active Technologies
 
-- Dart 3.4+, Flutter SDK 3.22+
+- Dart 3.8+, Flutter SDK 3.38+
 
 ## Project Structure
 
