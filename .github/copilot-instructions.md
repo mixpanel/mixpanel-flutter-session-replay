@@ -35,10 +35,10 @@ tool/                           # Build scripts (bump_version.sh)
 
 ## Essential Commands
 
-**Flutter and Dart are not installed in the sandbox environment.** You cannot run `flutter test`, `dart analyze`, or `dart format` directly. Rely on CI for validation.
+Flutter and Dart are pre-installed by `.github/workflows/copilot-setup-steps.yml`. You can run all standard commands directly.
 
 ```bash
-# Unit tests (requires Flutter SDK)
+# Unit tests
 flutter test
 
 # Unit tests excluding golden tests (for compat-check on older Flutter)
