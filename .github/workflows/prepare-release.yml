@@ -1,0 +1,82 @@
+name: Prepare Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate version format
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "::error::Invalid version format '$VERSION'. Expected semver (e.g. 1.0.0 or 1.0.0-beta.1)"
+            exit 1
+          fi
+
+      - name: Bump version and generate changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: ./tool/bump_version.sh "$VERSION"
+
+      - name: Clean up existing release branch and PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          BRANCH="release/$VERSION"
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "Closing existing PR #$EXISTING_PR and deleting branch"
+            gh pr close "$EXISTING_PR" --delete-branch
+          elif git ls-remote --exit-code origin "refs/heads/$BRANCH" &>/dev/null; then
+            echo "Deleting existing remote branch $BRANCH"
+            git push origin --delete "$BRANCH"
+          fi
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "release/$VERSION"
+          git add pubspec.yaml README.md lib/src/version.dart CHANGELOG.md
+          git commit -m "chore: prepare release $VERSION"
+          git push -u origin "release/$VERSION"
+          gh pr create \
+            --title "chore: release $VERSION" \
+            --body "$(cat <<EOF
+          Automated release preparation for v${VERSION}.
+
+          **Changes:**
+          - Bumped version in \`pubspec.yaml\`, \`README.md\`, \`lib/src/version.dart\`
+          - Generated \`CHANGELOG.md\` from merged PRs since last tag
+
+          **Before merging**, review the changelog and edit if needed.
+
+          **After merging**, run the **Publish to pub.dev** workflow:
+          1. Go to Actions > Publish to pub.dev
+          2. Enter \`main\` as the git ref
+          3. Enter \`${VERSION}\` as the version confirmation
+          EOF
+          )"

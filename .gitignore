@@ -1,0 +1,54 @@
+# OS files
+.DS_Store
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json.template
+!.vscode/extensions.json
+*.iml
+
+# AI tooling
+.claude/
+.specify/
+
+# Flutter/Dart/Pub
+/pubspec.lock
+**/doc/api/
+.dart_tool/
+.flutter-plugins-dependencies
+/build/
+/coverage/
+
+# Android
+**/android/local.properties
+**/android/.gradle/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/gradle/wrapper/gradle-wrapper.jar
+**/GeneratedPluginRegistrant.java
+
+# iOS/macOS CocoaPods
+**/Pods/
+**/Podfile.lock
+**/.bundle/
+
+# Local development config
+**/local.env
+
+# iOS Flutter generated files
+**/ios/Flutter/Generated.xcconfig
+**/ios/LocalDevelopment.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+
+# macOS Flutter ephemeral files
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Used to hold additional context for claude (ex other platform source code source)
+reference/
+references/

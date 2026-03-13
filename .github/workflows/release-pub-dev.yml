@@ -1,0 +1,127 @@
+name: Publish to pub.dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to publish (branch, tag, or SHA — must be on main)'
+        required: true
+        type: string
+        default: 'main'
+      confirm_version:
+        description: 'Confirm the version to publish (must match pubspec.yaml)'
+        required: true
+        type: string
+
+# Prevent concurrent publishes
+concurrency:
+  group: pub-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write  # Required for pub.dev OIDC authentication
+
+jobs:
+  publish:
+    name: Publish to pub.dev
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    # -----------------------------------------------------------------------
+    # SETUP: Before first use, configure pub.dev to trust this GitHub repo.
+    #
+    # 1. Go to https://pub.dev/packages/mixpanel_flutter_session_replay/admin
+    # 2. Under "Automated publishing", enable GitHub Actions
+    # 3. Set repository to: mixpanel/mixpanel-flutter-session-replay
+    # -----------------------------------------------------------------------
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Verify ref is on main
+        run: |
+          RESOLVED=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$RESOLVED" origin/main; then
+            echo "::error::Ref '${{ inputs.ref }}' ($RESOLVED) is not on the main branch."
+            exit 1
+          fi
+
+      - name: Validate version
+        env:
+          CONFIRM_VERSION: ${{ inputs.confirm_version }}
+        run: |
+          PUBSPEC_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          if [ "$CONFIRM_VERSION" != "$PUBSPEC_VERSION" ]; then
+            echo "::error::Input version '$CONFIRM_VERSION' does not match pubspec.yaml version '$PUBSPEC_VERSION'"
+            exit 1
+          fi
+          echo "VERSION=$PUBSPEC_VERSION" >> "$GITHUB_ENV"
+          echo "Version confirmed: $PUBSPEC_VERSION"
+
+      - name: Check tag does not already exist
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag v$VERSION already exists. This version may have already been published."
+            exit 1
+          fi
+
+      # Pinned to commit SHA for supply chain security — update hash when upgrading.
+      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+        with:
+          channel: stable
+          flutter-version: '3.41.2'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Dry run publish
+        run: dart pub publish --dry-run
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Extract changelog for release
+        run: |
+          python3 -c "
+          import re, sys, os
+          with open('CHANGELOG.md') as f:
+              content = f.read()
+          version = re.escape(os.environ['VERSION'])
+          pattern = r'## ' + version + r'\n(.*?)(?=\n## |\Z)'
+          match = re.search(pattern, content, re.DOTALL)
+          if match:
+              print(match.group(1).strip())
+          else:
+              print(f'Release v{os.environ[\"VERSION\"]}')
+          " > release_notes.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file release_notes.md
+
+      # TODO: Uncomment after dry-run testing of the workflow.
+      # Publish last — pub.dev uploads are irreversible, while git tags and
+      # GitHub releases can be deleted and recreated if earlier steps fail.
+      # - name: Publish to pub.dev
+      #   run: dart pub publish --force
+
+      - name: Summary
+        run: |
+          echo "## Published v$VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [pub.dev](https://pub.dev/packages/mixpanel_flutter_session_replay/versions/$VERSION)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/v$VERSION)" >> "$GITHUB_STEP_SUMMARY"
