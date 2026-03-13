@@ -18,8 +18,8 @@ Session Replay provides powerful insights into user behavior, but it also introd
 
 | Platform | Minimum Version |
 |----------|----------------|
-| Flutter  | 3.22+          |
-| Dart     | 3.4+           |
+| Flutter  | 3.38+          |
+| Dart     | 3.8+           |
 | iOS      | 13.0+          |
 | Android  | API 24 (7.0+)  |
 | macOS    | 10.15+         |

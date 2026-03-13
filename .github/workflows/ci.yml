@@ -16,7 +16,7 @@ jobs:
   # Dev dependencies (lints, test helpers) may require a newer SDK, so this
   # job resolves only production dependencies and runs analysis without tests.
   compat-check:
-    name: Compatibility Check (Flutter 3.22.0)
+    name: Compatibility Check (Flutter 3.38.0)
     runs-on: macos-latest
     timeout-minutes: 15
 
@@ -27,14 +27,11 @@ jobs:
       - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
         with:
           channel: stable
-          flutter-version: '3.22.0'
+          flutter-version: '3.38.0'
           cache: true
 
-      - name: Remove incompatible dev dependencies and resolve
-        run: |
-          sed -i '' '/flutter_lints/d' pubspec.yaml example/pubspec.yaml
-          sed -i '' 's/include: package:flutter_lints\/flutter.yaml/# lint package removed for compat check/' analysis_options.yaml example/analysis_options.yaml
-          flutter pub get
+      - name: Resolve dependencies
+        run: flutter pub get
 
       - name: Analyze library code
         run: dart analyze --fatal-infos lib

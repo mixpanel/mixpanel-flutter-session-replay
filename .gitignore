@@ -12,6 +12,10 @@
 .claude/
 .specify/
 
+# FVM
+.fvm/
+.fvmrc
+
 # Flutter/Dart/Pub
 /pubspec.lock
 **/doc/api/

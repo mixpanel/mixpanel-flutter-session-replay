@@ -50,3 +50,7 @@ app.*.map.json
 **/generated_plugin_registrant.*
 **/generated_plugins.cmake
 **/GeneratedPluginRegistrant.swift
+
+# FVM Version Cache
+.fvm/
+.fvmrc
