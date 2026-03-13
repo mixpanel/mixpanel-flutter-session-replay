@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is the **Mixpanel Flutter Session Replay SDK** — a Flutter plugin that captures UI screenshots, user interactions, and app lifecycle events, then uploads them to the Mixpanel Session Replay backend. It supports iOS 13+, Android API 24+, and macOS 10.15+.
+This is the **Mixpanel Flutter Session Replay SDK** — a Flutter plugin that captures UI screenshots, user interactions, and app lifecycle events, then uploads them to the Mixpanel Session Replay backend. It supports iOS 13+, Android API 21+, and macOS 10.15+.
 
 **Current stage:** Beta (v0.1.0-beta.1)
 
@@ -47,7 +47,7 @@ flutter test --exclude-tags=golden
 # Format check — ALWAYS use --language-version=latest (tall style)
 dart format --language-version=latest --set-exit-if-changed .
 
-# Static analysis — treats all infos/hints as errors
+# Static analysis — treats analyzer infos as errors
 dart analyze --fatal-infos
 
 # Integration tests (requires connected device/simulator)
