@@ -7,6 +7,40 @@ enum AutoMaskedView {
   image,
 }
 
+/// Controls how the SDK handles remote settings from the Mixpanel settings endpoint.
+///
+/// Remote settings enable server-side control over session replay parameters such as
+/// sampling rate. This enum determines the SDK's behavior when fetching these
+/// settings and how failures are handled.
+///
+/// | Mode       | Remote Fetch | On Failure                      |
+/// |------------|--------------|----------------------------------|
+/// | `disabled` | Yes          | Uses local config                |
+/// | `strict`   | Yes          | No replays sent                  |
+/// | `fallback` | Yes          | Uses cache or local config       |
+enum RemoteSettingsMode {
+  /// Remote SDK config settings are fetched but not applied.
+  ///
+  /// The settings endpoint is still called to check the recording kill-switch,
+  /// but remote config values (e.g., `record_sessions_percent`) are ignored.
+  /// The SDK initializes using only the app-provided configuration.
+  disabled,
+
+  /// Requires successful remote SDK config fetch for recording.
+  ///
+  /// If the network request fails, times out, or the response does not include
+  /// `sdk_config.config`, recording is disabled and **no replays are sent**.
+  strict,
+
+  /// Attempts remote fetch with graceful degradation on failure.
+  ///
+  /// On success, remote settings are applied and cached locally. If the fetch
+  /// fails or times out, the SDK initializes using:
+  /// 1. Previously cached remote settings (from last successful fetch)
+  /// 2. App-provided configuration (if no cache exists)
+  fallback,
+}
+
 /// Log level for SDK logging
 enum LogLevel {
   /// No logging

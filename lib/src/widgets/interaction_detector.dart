@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 
 import '../internal/widget_coordinator.dart';
-import '../internal/upload/settings_service.dart';
+import '../internal/settings/settings_service.dart';
 import '../models/results.dart';
 import '../models/rrweb_types.dart';
 

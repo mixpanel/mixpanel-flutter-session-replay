@@ -7,7 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../storage/event_queue_interface.dart';
 import 'payload_serializer.dart';
-import 'settings_service.dart';
+import '../settings/settings_service.dart';
 import '../logger.dart';
 import '../../models/results.dart';
 

@@ -15,7 +15,7 @@ import 'internal/storage/sqlite_event_queue.dart';
 import 'internal/session/session_manager.dart';
 import 'internal/upload/upload_service.dart';
 import 'internal/upload/payload_serializer.dart';
-import 'internal/upload/settings_service.dart';
+import 'internal/settings/settings_service.dart';
 import 'internal/session_replay_coordinator.dart';
 import 'internal/logger.dart';
 
@@ -235,6 +235,7 @@ class MixpanelSessionReplay {
         sessionManager: sessionManager,
         logger: logger,
         autoRecordSessionsPercent: options.autoRecordSessionsPercent,
+        remoteSettingsMode: options.remoteSettingsMode,
         debugOptions: options.debugOptions,
       );
 

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../internal/widget_coordinator.dart';
 import '../internal/capture/capture_scheduler.dart';
-import '../internal/upload/settings_service.dart';
+import '../internal/settings/settings_service.dart';
 import '../models/debug_overlay_colors.dart';
 import '../models/masking_directive.dart';
 import '../models/results.dart';

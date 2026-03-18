@@ -1,10 +1,15 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http_testing;
 import 'package:mixpanel_flutter_session_replay/src/internal/session_replay_coordinator.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/event_recorder.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/screenshot_capturer.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/upload/upload_service.dart';
-import 'package:mixpanel_flutter_session_replay/src/internal/upload/settings_service.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_service.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/upload/payload_serializer.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/session/session_manager.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
@@ -12,6 +17,8 @@ import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/masking_directive.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/results.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/session_event.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/fake_http_client.dart';
 import 'helpers/in_memory_event_queue.dart';
@@ -30,6 +37,7 @@ void main() {
 
     SessionReplayCoordinator createCoordinator({
       double autoRecordSessionsPercent = 0,
+      RemoteSettingsMode remoteSettingsMode = RemoteSettingsMode.disabled,
     }) {
       return SessionReplayCoordinator(
         screenshotCapturer: screenshotCapturer,
@@ -39,11 +47,14 @@ void main() {
         sessionManager: sessionManager,
         logger: logger,
         autoRecordSessionsPercent: autoRecordSessionsPercent,
+        remoteSettingsMode: remoteSettingsMode,
         debugOptions: null,
       );
     }
 
     setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+
       // Mock the method channel used by SessionReplaySender
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
@@ -167,15 +178,11 @@ void main() {
       });
 
       test('does not start when remote settings are disabled', () async {
-        // GIVEN - coordinator without auto-start to isolate the
-        // "disabled settings block startRecording" behavior
-        final disabledSettingsClient = createFakeSettingsClient(
-          isEnabled: false,
-        );
+        // GIVEN
         final disabledSettingsService = SettingsService(
           token: 'test-token',
           logger: logger,
-          httpClient: disabledSettingsClient,
+          httpClient: createFakeSettingsClient(isEnabled: false),
         );
 
         final coordinator = SessionReplayCoordinator(
@@ -185,16 +192,14 @@ void main() {
           settingsService: disabledSettingsService,
           sessionManager: sessionManager,
           logger: logger,
-          autoRecordSessionsPercent: 0, // No auto-start to avoid race
+          autoRecordSessionsPercent: 0,
+          remoteSettingsMode: RemoteSettingsMode.disabled,
           debugOptions: null,
         );
 
         // Trigger settings check via foreground
         coordinator.onAppForegrounded();
-        // Wait for settings check to complete
         await pumpEventQueue();
-
-        // Settings should be disabled
         expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
 
         // WHEN - try to start recording after settings are disabled
@@ -378,19 +383,19 @@ void main() {
       });
 
       test(
-        'auto-starts recording when autoRecordSessionsPercent > 0',
+        'auto-starts recording after settings resolve when autoRecordSessionsPercent > 0',
         () async {
           // GIVEN
           final coordinator = createCoordinator(
             autoRecordSessionsPercent: 100.0,
           );
-          coordinator.onAppBackgrounded();
 
-          // WHEN
+          // WHEN - foreground triggers settings check, then auto-start
           coordinator.onAppForegrounded();
           await pumpEventQueue();
 
-          // THEN
+          // THEN - recording starts after settings resolve
+          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
           expect(coordinator.recordingState, RecordingState.recording);
         },
       );
@@ -422,32 +427,37 @@ void main() {
         expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
       });
 
-      test('disables recording when remote settings return disabled', () async {
-        // GIVEN
-        final disabledSettingsService = SettingsService(
-          token: 'test-token',
-          logger: logger,
-          httpClient: createFakeSettingsClient(isEnabled: false),
-        );
+      test(
+        'does not auto-start recording when kill-switch is disabled',
+        () async {
+          // GIVEN
+          final disabledSettingsService = SettingsService(
+            token: 'test-token',
+            logger: logger,
+            httpClient: createFakeSettingsClient(isEnabled: false),
+          );
 
-        final coordinator = SessionReplayCoordinator(
-          screenshotCapturer: screenshotCapturer,
-          eventRecorder: eventRecorder,
-          uploadService: uploadService,
-          settingsService: disabledSettingsService,
-          sessionManager: sessionManager,
-          logger: logger,
-          autoRecordSessionsPercent: 100.0,
-          debugOptions: null,
-        );
+          final coordinator = SessionReplayCoordinator(
+            screenshotCapturer: screenshotCapturer,
+            eventRecorder: eventRecorder,
+            uploadService: uploadService,
+            settingsService: disabledSettingsService,
+            sessionManager: sessionManager,
+            logger: logger,
+            autoRecordSessionsPercent: 100.0,
+            remoteSettingsMode: RemoteSettingsMode.disabled,
+            debugOptions: null,
+          );
 
-        // WHEN
-        coordinator.onAppForegrounded();
-        await pumpEventQueue();
+          // WHEN
+          coordinator.onAppForegrounded();
+          await pumpEventQueue();
 
-        // THEN
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
-      });
+          // THEN - kill-switch prevents recording from ever starting
+          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          expect(coordinator.recordingState, RecordingState.notRecording);
+        },
+      );
 
       test('is safe to call when disposed', () async {
         // GIVEN
@@ -537,45 +547,16 @@ void main() {
     });
 
     group('settings error handling', () {
-      test('settings check error sets state to disabled', () async {
-        // GIVEN - settings service that throws an error
-        final errorSettingsService = SettingsService(
-          token: 'test-token',
-          logger: logger,
-          httpClient: createFailingHttpClient(),
-        );
-
-        final coordinator = SessionReplayCoordinator(
-          screenshotCapturer: screenshotCapturer,
-          eventRecorder: eventRecorder,
-          uploadService: uploadService,
-          settingsService: errorSettingsService,
-          sessionManager: sessionManager,
-          logger: logger,
-          autoRecordSessionsPercent: 0,
-          debugOptions: null,
-        );
-
-        // WHEN
-        coordinator.onAppForegrounded();
-        await pumpEventQueue();
-
-        // THEN - settings check error should set state to disabled
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
-      });
-
       test(
-        'settings check error stops recording that started while check was pending',
+        'network error with no cache defaults to enabled (matches Android/iOS)',
         () async {
-          // GIVEN - settings service that throws an error
+          // GIVEN - settings service that fails with no cached values
           final errorSettingsService = SettingsService(
             token: 'test-token',
             logger: logger,
             httpClient: createFailingHttpClient(),
           );
 
-          // Use autoRecordSessionsPercent: 0 to avoid the race condition where
-          // recordSession().then() fires after the settings error handler
           final coordinator = SessionReplayCoordinator(
             screenshotCapturer: screenshotCapturer,
             eventRecorder: eventRecorder,
@@ -584,19 +565,92 @@ void main() {
             sessionManager: sessionManager,
             logger: logger,
             autoRecordSessionsPercent: 0,
+            remoteSettingsMode: RemoteSettingsMode.disabled,
             debugOptions: null,
           );
 
-          // Manually start recording (simulating recording started while settings pending)
+          // WHEN
+          coordinator.onAppForegrounded();
+          await pumpEventQueue();
+
+          // THEN - no cache, so defaults to enabled (matches Android/iOS)
+          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        },
+      );
+
+      test(
+        'strict mode disables recording when network fails (from cache)',
+        () async {
+          // GIVEN - settings service that fails with no cache
+          final errorSettingsService = SettingsService(
+            token: 'test-token',
+            logger: logger,
+            httpClient: createFailingHttpClient(),
+          );
+
+          final coordinator = SessionReplayCoordinator(
+            screenshotCapturer: screenshotCapturer,
+            eventRecorder: eventRecorder,
+            uploadService: uploadService,
+            settingsService: errorSettingsService,
+            sessionManager: sessionManager,
+            logger: logger,
+            autoRecordSessionsPercent: 100.0,
+            remoteSettingsMode: RemoteSettingsMode.strict,
+            debugOptions: null,
+          );
+
+          // WHEN - foreground triggers settings check which falls back to cache
+          coordinator.onAppForegrounded();
+          await pumpEventQueue();
+
+          // THEN - strict mode: fromCache=true → disables recording
+          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          expect(coordinator.recordingState, RecordingState.notRecording);
+        },
+      );
+
+      test(
+        'kill-switch stops manually started recording when settings arrive',
+        () async {
+          // GIVEN - delayed settings response
+          final completer = Completer<http.Response>();
+          final delayedSettingsService = SettingsService(
+            token: 'test-token',
+            logger: logger,
+            httpClient: http_testing.MockClient((_) => completer.future),
+          );
+
+          final coordinator = SessionReplayCoordinator(
+            screenshotCapturer: screenshotCapturer,
+            eventRecorder: eventRecorder,
+            uploadService: uploadService,
+            settingsService: delayedSettingsService,
+            sessionManager: sessionManager,
+            logger: logger,
+            autoRecordSessionsPercent: 0,
+            remoteSettingsMode: RemoteSettingsMode.disabled,
+            debugOptions: null,
+          );
+
+          // Trigger settings check (in-flight)
+          coordinator.onAppForegrounded();
+
+          // Manually start recording while settings check is pending
           coordinator.startRecording(sessionsPercent: 100.0);
           await pumpEventQueue();
           expect(coordinator.recordingState, RecordingState.recording);
 
-          // WHEN - foreground triggers settings check which fails
-          coordinator.onAppForegrounded();
+          // WHEN - kill-switch returns disabled
+          completer.complete(http.Response(
+            jsonEncode({
+              'recording': {'is_enabled': false},
+            }),
+            200,
+          ));
           await pumpEventQueue();
 
-          // THEN - settings error should disable and reset recording state
+          // THEN - kill-switch stops the in-progress recording
           expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
           expect(coordinator.recordingState, RecordingState.notRecording);
         },
@@ -623,6 +677,211 @@ void main() {
           expect(coordinator.isAppInForeground, true);
         },
       );
+    });
+
+    group('remote config modes', () {
+      test('disabled mode ignores remote sdk_config values', () async {
+        // GIVEN - server returns 25% sampling rate
+        final remoteSettingsService = SettingsService(
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFakeSettingsClient(
+            isEnabled: true,
+            recordSessionsPercent: 25.0,
+          ),
+        );
+
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: remoteSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 100.0, // local config
+          remoteSettingsMode: RemoteSettingsMode.disabled,
+          debugOptions: null,
+        );
+
+        // WHEN - foreground triggers settings check
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
+
+        // THEN - remote settings enabled, but sdk_config ignored
+        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        // Recording should start with local 100% (always records)
+        expect(coordinator.recordingState, RecordingState.recording);
+      });
+
+      test('fallback mode applies remote recordSessionsPercent', () async {
+        // GIVEN - server returns 0% sampling rate (disable auto-recording)
+        final remoteSettingsService = SettingsService(
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFakeSettingsClient(
+            isEnabled: true,
+            recordSessionsPercent: 0.0,
+          ),
+        );
+
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: remoteSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 100.0, // local config
+          remoteSettingsMode: RemoteSettingsMode.fallback,
+          debugOptions: null,
+        );
+
+        // WHEN - foreground triggers settings check, then auto-start
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
+
+        // THEN - remote 0% overrides local 100%, recording does not start
+        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(coordinator.recordingState, RecordingState.notRecording);
+      });
+
+      test('strict mode disables when sdk_config is missing', () async {
+        // GIVEN - server returns enabled but no sdk_config
+        final remoteSettingsService = SettingsService(
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFakeSettingsClient(isEnabled: true),
+        );
+
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: remoteSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 100.0,
+          remoteSettingsMode: RemoteSettingsMode.strict,
+          debugOptions: null,
+        );
+
+        // WHEN - foreground triggers settings check
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
+
+        // THEN - strict mode: sdk_config missing → never starts recording
+        expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+        expect(coordinator.recordingState, RecordingState.notRecording);
+      });
+
+      test(
+        'strict mode stops manually started recording when sdk_config is missing',
+        () async {
+          // GIVEN - delayed settings response so we can start recording
+          // while the check is in-flight
+          final completer = Completer<http.Response>();
+          final delayedSettingsService = SettingsService(
+            token: 'test-token',
+            logger: logger,
+            httpClient: http_testing.MockClient((_) => completer.future),
+          );
+
+          final coordinator = SessionReplayCoordinator(
+            screenshotCapturer: screenshotCapturer,
+            eventRecorder: eventRecorder,
+            uploadService: uploadService,
+            settingsService: delayedSettingsService,
+            sessionManager: sessionManager,
+            logger: logger,
+            autoRecordSessionsPercent: 0, // no auto-start
+            remoteSettingsMode: RemoteSettingsMode.strict,
+            debugOptions: null,
+          );
+
+          // Trigger settings check (in-flight, not yet resolved)
+          coordinator.onAppForegrounded();
+
+          // Manually start recording while settings check is pending
+          coordinator.startRecording(sessionsPercent: 100.0);
+          await pumpEventQueue();
+          expect(coordinator.recordingState, RecordingState.recording);
+
+          // WHEN - settings respond with no sdk_config
+          completer.complete(http.Response(
+            jsonEncode({
+              'recording': {'is_enabled': true},
+            }),
+            200,
+          ));
+          await pumpEventQueue();
+
+          // THEN - strict mode stops the in-progress recording
+          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          expect(coordinator.recordingState, RecordingState.notRecording);
+        },
+      );
+
+      test('strict mode allows recording when sdk_config is present', () async {
+        // GIVEN - server returns enabled with sdk_config
+        final remoteSettingsService = SettingsService(
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFakeSettingsClient(
+            isEnabled: true,
+            recordSessionsPercent: 100.0,
+          ),
+        );
+
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: remoteSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 100.0,
+          remoteSettingsMode: RemoteSettingsMode.strict,
+          debugOptions: null,
+        );
+
+        // WHEN - foreground triggers settings check + auto-start
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
+
+        // THEN - strict mode: sdk_config present → allows recording
+        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(coordinator.recordingState, RecordingState.recording);
+      });
+
+      test('fallback mode keeps local config when network fails', () async {
+        // GIVEN - network fails
+        final errorSettingsService = SettingsService(
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFailingHttpClient(),
+        );
+
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: errorSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 100.0,
+          remoteSettingsMode: RemoteSettingsMode.fallback,
+          debugOptions: null,
+        );
+
+        // WHEN - foreground triggers settings check
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
+
+        // THEN - fallback mode: network error with no cache → keeps local config
+        // isRecordingEnabled defaults to true (no cache), so recording continues
+        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(coordinator.recordingState, RecordingState.recording);
+      });
     });
 
     group('replayId', () {
@@ -828,13 +1087,14 @@ void main() {
       );
 
       test('background/foreground cycle creates new session', () async {
-        // GIVEN
+        // GIVEN - first foreground resolves settings and starts recording
         final coordinator = createCoordinator(autoRecordSessionsPercent: 100.0);
-        coordinator.startRecording(sessionsPercent: 100.0);
+        coordinator.onAppForegrounded();
         await pumpEventQueue();
+        expect(coordinator.recordingState, RecordingState.recording);
         final firstSession = sessionManager.getCurrentSession();
 
-        // WHEN - background then foreground
+        // WHEN - background then foreground (settings already resolved)
         coordinator.onAppBackgrounded();
         coordinator.onAppForegrounded();
         await pumpEventQueue();
