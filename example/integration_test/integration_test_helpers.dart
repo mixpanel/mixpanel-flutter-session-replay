@@ -32,9 +32,11 @@ LogLevel _parseLogLevel(String value) {
 ///
 /// [settingsEnabled] controls the `is_enabled` value in the settings response.
 /// [settingsStatusCode] controls the HTTP status code for the settings response.
+/// [recordSessionsPercent] if non-null, includes `sdk_config.config` in the response.
 ({http.Client client, List<http.Request> uploadRequests}) createTestHttpClient({
   bool settingsEnabled = true,
   int settingsStatusCode = 200,
+  double? recordSessionsPercent,
 }) {
   final uploadRequests = <http.Request>[];
 
@@ -43,12 +45,15 @@ LogLevel _parseLogLevel(String value) {
       if (settingsStatusCode != 200) {
         return http.Response('Server Error', settingsStatusCode);
       }
-      return http.Response(
-        jsonEncode({
-          'recording': {'is_enabled': settingsEnabled},
-        }),
-        200,
-      );
+      final responseBody = <String, dynamic>{
+        'recording': {'is_enabled': settingsEnabled},
+      };
+      if (recordSessionsPercent != null) {
+        responseBody['sdk_config'] = {
+          'config': {'record_sessions_percent': recordSessionsPercent},
+        };
+      }
+      return http.Response(jsonEncode(responseBody), 200);
     }
 
     uploadRequests.add(request);
