@@ -6,18 +6,18 @@ import 'package:http/http.dart' as http;
 import '../../version.dart';
 import '../logger.dart';
 import 'remote_settings_result.dart';
-import 'remote_settings_state.dart';
+import 'remote_enablement_state.dart';
 import 'sdk_config.dart';
-import 'settings_cache.dart';
+import 'settings_storage_provider.dart';
 
 export 'remote_settings_result.dart';
-export 'remote_settings_state.dart';
+export 'remote_enablement_state.dart';
 export 'sdk_config.dart';
 
 /// Service for fetching remote settings from Mixpanel's settings endpoint.
 ///
 /// Handles the network request to check if session replay recording is enabled
-/// (kill-switch) and to fetch remote SDK configuration (e.g.,
+/// (enablement state) and to fetch remote SDK configuration (e.g.,
 /// `record_sessions_percent`). The check runs once per app launch.
 ///
 /// Persistent caching is delegated to [SettingsStorageProvider].
@@ -36,14 +36,13 @@ class SettingsService {
   /// Cached result from the last check (in-memory, per app launch)
   RemoteSettingsResult? _cachedResult;
 
-  /// Current remote settings state.
-  RemoteSettingsState get remoteState => switch (_cachedResult) {
-    RemoteSettingsResult(isRecordingEnabled: true) =>
-      RemoteSettingsState.enabled,
-    RemoteSettingsResult(isRecordingEnabled: false) =>
-      RemoteSettingsState.disabled,
-    null => RemoteSettingsState.pending,
-  };
+  /// Current remote enablement state.
+  RemoteEnablementState get remoteState =>
+      switch (_cachedResult?.isRecordingEnabled) {
+        true => RemoteEnablementState.enabled,
+        false => RemoteEnablementState.disabled,
+        null => RemoteEnablementState.pending,
+      };
 
   /// Completer for in-flight settings check
   Completer<RemoteSettingsResult>? _pendingCheck;
@@ -54,20 +53,18 @@ class SettingsService {
   SettingsService({
     required String token,
     required MixpanelLogger logger,
-    http.Client? httpClient,
-    SettingsStorageProvider? storageProvider,
+    required SettingsStorageProvider storageProvider,
+    required http.Client httpClient,
   }) : _token = token,
        _logger = logger,
-       _httpClient = httpClient ?? http.Client(),
-       _storageProvider =
-           storageProvider ??
-           SettingsStorageProvider(token: token, logger: logger);
+       _httpClient = httpClient,
+       _storageProvider = storageProvider;
 
   /// Fetch remote settings including recording status and SDK config.
   ///
   /// This performs a network request to Mixpanel's settings endpoint once per
   /// app launch. Returns a [RemoteSettingsResult] containing both the recording
-  /// kill-switch state and any remote SDK configuration.
+  /// enablement state and any remote SDK configuration.
   ///
   /// If a check is already in progress, waits for that check to complete.
   /// On failure, returns cached values from SharedPreferences.
@@ -155,7 +152,7 @@ class SettingsService {
     _logger.debug('Parsing settings response');
     final json = jsonDecode(responseBody) as Map<String, dynamic>;
 
-    // Parse recording (kill-switch)
+    // Parse recording enablement
     final recording = json['recording'] as Map<String, dynamic>?;
     final isEnabled = recording?['is_enabled'] as bool? ?? true;
 

@@ -13,17 +13,16 @@ enum AutoMaskedView {
 /// sampling rate. This enum determines the SDK's behavior when fetching these
 /// settings and how failures are handled.
 ///
-/// | Mode       | Remote Fetch | On Failure                      |
-/// |------------|--------------|----------------------------------|
-/// | `disabled` | Yes          | Uses local config                |
-/// | `strict`   | Yes          | No replays sent                  |
-/// | `fallback` | Yes          | Uses cache or local config       |
+/// | Mode       | Config Applied | On Failure                      |
+/// |------------|----------------|----------------------------------|
+/// | `disabled` | No             | Uses local config                |
+/// | `strict`   | Yes            | No replays sent                  |
+/// | `fallback` | Yes            | Uses cache or local config       |
 enum RemoteSettingsMode {
-  /// Remote SDK config settings are fetched but not applied.
+  /// Remote SDK config is not applied.
   ///
-  /// The settings endpoint is still called to check the recording kill-switch,
-  /// but remote config values (e.g., `record_sessions_percent`) are ignored.
   /// The SDK initializes using only the app-provided configuration.
+  /// Remote config values (e.g., `record_sessions_percent`) are ignored.
   disabled,
 
   /// Requires successful remote SDK config fetch for recording.

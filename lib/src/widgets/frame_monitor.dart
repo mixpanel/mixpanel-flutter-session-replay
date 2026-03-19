@@ -54,8 +54,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
     if (!mounted) return;
 
     // Skip processing if remotely disabled
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 
@@ -72,8 +72,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
 
   void _attemptCapture() {
     // Skip processing if remotely disabled
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 
@@ -98,8 +98,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
     if (!mounted) return;
 
     // Skip if remotely disabled (handles scheduled captures from before settings check)
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 

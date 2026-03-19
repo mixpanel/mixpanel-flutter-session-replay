@@ -10,6 +10,6 @@ class RemoteSettingsResult {
   const RemoteSettingsResult({
     required this.isRecordingEnabled,
     this.sdkConfig,
-    this.isFromCache = false,
+    required this.isFromCache,
   });
 }

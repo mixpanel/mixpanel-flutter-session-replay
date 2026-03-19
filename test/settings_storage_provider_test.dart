@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
-import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_cache.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_storage_provider.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
 

@@ -74,7 +74,7 @@ void main() {
       required InMemoryEventQueue eventQueue,
       int statusCode = 200,
       bool wifiOnly = false,
-      RemoteSettingsState Function()? getRemoteSettingsState,
+      RemoteEnablementState Function()? getRemoteEnablementState,
       Duration flushInterval = const Duration(seconds: 10),
       List<ConnectivityResult>? connectivity,
       dynamic httpClient,
@@ -85,8 +85,8 @@ void main() {
         eventQueue: eventQueue,
         payloadSerializer: serializer,
         wifiOnly: wifiOnly,
-        getRemoteSettingsState:
-            getRemoteSettingsState ?? () => RemoteSettingsState.enabled,
+        getRemoteEnablementState:
+            getRemoteEnablementState ?? () => RemoteEnablementState.enabled,
         flushInterval: flushInterval,
         maxPayloadBytes:
             maxPayloadBytes ?? UploadService.defaultMaxPayloadBytes,
@@ -391,7 +391,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.disabled,
+          getRemoteEnablementState: () => RemoteEnablementState.disabled,
           httpClient: recorder.client,
         );
 
@@ -411,7 +411,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.pending,
+          getRemoteEnablementState: () => RemoteEnablementState.pending,
           httpClient: recorder.client,
         );
 
@@ -431,7 +431,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.enabled,
+          getRemoteEnablementState: () => RemoteEnablementState.enabled,
           httpClient: recorder.client,
         );
 
@@ -526,7 +526,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.disabled,
+          getRemoteEnablementState: () => RemoteEnablementState.disabled,
           httpClient: recorder.client,
         );
 
@@ -547,7 +547,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.pending,
+          getRemoteEnablementState: () => RemoteEnablementState.pending,
           httpClient: recorder.client,
         );
 
@@ -568,7 +568,7 @@ void main() {
         final recorder = createRecordingHttpClient(statusCode: 200);
         final service = createService(
           eventQueue: eventQueue,
-          getRemoteSettingsState: () => RemoteSettingsState.enabled,
+          getRemoteEnablementState: () => RemoteEnablementState.enabled,
           httpClient: recorder.client,
         );
 

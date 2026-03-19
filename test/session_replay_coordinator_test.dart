@@ -10,6 +10,7 @@ import 'package:mixpanel_flutter_session_replay/src/internal/event_recorder.dart
 import 'package:mixpanel_flutter_session_replay/src/internal/screenshot_capturer.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/upload/upload_service.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_service.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_storage_provider.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/upload/payload_serializer.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/session/session_manager.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
@@ -33,6 +34,7 @@ void main() {
     late UploadService uploadService;
     late SettingsService settingsService;
     late ScreenshotCapturer screenshotCapturer;
+    late SettingsStorageProvider storageProvider;
     late MixpanelLogger logger;
 
     SessionReplayCoordinator createCoordinator({
@@ -63,6 +65,10 @@ void main() {
           );
 
       logger = MixpanelLogger(LogLevel.none);
+      storageProvider = SettingsStorageProvider(
+        token: 'test-token',
+        logger: logger,
+      );
       eventQueue = InMemoryEventQueue();
       await eventQueue.initialize();
       sessionManager = SessionManager();
@@ -79,13 +85,14 @@ void main() {
         eventQueue: eventQueue,
         payloadSerializer: PayloadSerializer('test-token'),
         wifiOnly: false,
-        getRemoteSettingsState: () => RemoteSettingsState.enabled,
+        getRemoteEnablementState: () => RemoteEnablementState.enabled,
         flushInterval: Duration(hours: 1),
         logger: logger,
         httpClient: httpClient,
       );
 
       settingsService = SettingsService(
+        storageProvider: storageProvider,
         token: 'test-token',
         logger: logger,
         httpClient: createFakeSettingsClient(isEnabled: true),
@@ -137,13 +144,13 @@ void main() {
 
       test('starts with pending remote settings state', () {
         // GIVEN
-        final expectedState = RemoteSettingsState.pending;
+        final expectedState = RemoteEnablementState.pending;
 
         // WHEN
         final coordinator = createCoordinator();
 
         // THEN
-        expect(coordinator.remoteSettingsState, expectedState);
+        expect(coordinator.remoteEnablementState, expectedState);
       });
     });
 
@@ -180,6 +187,7 @@ void main() {
       test('does not start when remote settings are disabled', () async {
         // GIVEN
         final disabledSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFakeSettingsClient(isEnabled: false),
@@ -200,7 +208,10 @@ void main() {
         // Trigger settings check via foreground
         coordinator.onAppForegrounded();
         await pumpEventQueue();
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.disabled,
+        );
 
         // WHEN - try to start recording after settings are disabled
         coordinator.startRecording(sessionsPercent: 100.0);
@@ -395,7 +406,10 @@ void main() {
           await pumpEventQueue();
 
           // THEN - recording starts after settings resolve
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.enabled,
+          );
           expect(coordinator.recordingState, RecordingState.recording);
         },
       );
@@ -416,7 +430,10 @@ void main() {
       test('checks remote settings on first foreground', () async {
         // GIVEN
         final coordinator = createCoordinator();
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.pending);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.pending,
+        );
 
         // WHEN
         coordinator.onAppForegrounded();
@@ -424,14 +441,18 @@ void main() {
         await pumpEventQueue();
 
         // THEN
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
       });
 
       test(
-        'does not auto-start recording when kill-switch is disabled',
+        'does not auto-start recording when remote enablement is disabled',
         () async {
           // GIVEN
           final disabledSettingsService = SettingsService(
+            storageProvider: storageProvider,
             token: 'test-token',
             logger: logger,
             httpClient: createFakeSettingsClient(isEnabled: false),
@@ -453,8 +474,11 @@ void main() {
           coordinator.onAppForegrounded();
           await pumpEventQueue();
 
-          // THEN - kill-switch prevents recording from ever starting
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          // THEN - remote enablement prevents recording from ever starting
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.disabled,
+          );
           expect(coordinator.recordingState, RecordingState.notRecording);
         },
       );
@@ -547,42 +571,44 @@ void main() {
     });
 
     group('settings error handling', () {
-      test(
-        'network error with no cache defaults to enabled (matches Android/iOS)',
-        () async {
-          // GIVEN - settings service that fails with no cached values
-          final errorSettingsService = SettingsService(
-            token: 'test-token',
-            logger: logger,
-            httpClient: createFailingHttpClient(),
-          );
+      test('network error with no cache defaults to enabled', () async {
+        // GIVEN - settings service that fails with no cached values
+        final errorSettingsService = SettingsService(
+          storageProvider: storageProvider,
+          token: 'test-token',
+          logger: logger,
+          httpClient: createFailingHttpClient(),
+        );
 
-          final coordinator = SessionReplayCoordinator(
-            screenshotCapturer: screenshotCapturer,
-            eventRecorder: eventRecorder,
-            uploadService: uploadService,
-            settingsService: errorSettingsService,
-            sessionManager: sessionManager,
-            logger: logger,
-            autoRecordSessionsPercent: 0,
-            remoteSettingsMode: RemoteSettingsMode.disabled,
-            debugOptions: null,
-          );
+        final coordinator = SessionReplayCoordinator(
+          screenshotCapturer: screenshotCapturer,
+          eventRecorder: eventRecorder,
+          uploadService: uploadService,
+          settingsService: errorSettingsService,
+          sessionManager: sessionManager,
+          logger: logger,
+          autoRecordSessionsPercent: 0,
+          remoteSettingsMode: RemoteSettingsMode.disabled,
+          debugOptions: null,
+        );
 
-          // WHEN
-          coordinator.onAppForegrounded();
-          await pumpEventQueue();
+        // WHEN
+        coordinator.onAppForegrounded();
+        await pumpEventQueue();
 
-          // THEN - no cache, so defaults to enabled (matches Android/iOS)
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
-        },
-      );
+        // THEN - no cache, so defaults to enabled
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
+      });
 
       test(
         'strict mode disables recording when network fails (from cache)',
         () async {
           // GIVEN - settings service that fails with no cache
           final errorSettingsService = SettingsService(
+            storageProvider: storageProvider,
             token: 'test-token',
             logger: logger,
             httpClient: createFailingHttpClient(),
@@ -605,17 +631,21 @@ void main() {
           await pumpEventQueue();
 
           // THEN - strict mode: fromCache=true → disables recording
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.disabled,
+          );
           expect(coordinator.recordingState, RecordingState.notRecording);
         },
       );
 
       test(
-        'kill-switch stops manually started recording when settings arrive',
+        'remote enablement stops manually started recording when settings arrive',
         () async {
           // GIVEN - delayed settings response
           final completer = Completer<http.Response>();
           final delayedSettingsService = SettingsService(
+            storageProvider: storageProvider,
             token: 'test-token',
             logger: logger,
             httpClient: http_testing.MockClient((_) => completer.future),
@@ -641,17 +671,22 @@ void main() {
           await pumpEventQueue();
           expect(coordinator.recordingState, RecordingState.recording);
 
-          // WHEN - kill-switch returns disabled
-          completer.complete(http.Response(
-            jsonEncode({
-              'recording': {'is_enabled': false},
-            }),
-            200,
-          ));
+          // WHEN - remote enablement returns disabled
+          completer.complete(
+            http.Response(
+              jsonEncode({
+                'recording': {'is_enabled': false},
+              }),
+              200,
+            ),
+          );
           await pumpEventQueue();
 
-          // THEN - kill-switch stops the in-progress recording
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          // THEN - remote enablement stops the in-progress recording
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.disabled,
+          );
           expect(coordinator.recordingState, RecordingState.notRecording);
         },
       );
@@ -663,7 +698,10 @@ void main() {
           final coordinator = createCoordinator();
           coordinator.onAppForegrounded();
           await pumpEventQueue();
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.enabled,
+          );
 
           // Background then foreground again
           coordinator.onAppBackgrounded();
@@ -673,7 +711,10 @@ void main() {
           await pumpEventQueue();
 
           // THEN - should not error, upload service started immediately
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.enabled,
+          );
           expect(coordinator.isAppInForeground, true);
         },
       );
@@ -683,6 +724,7 @@ void main() {
       test('disabled mode ignores remote sdk_config values', () async {
         // GIVEN - server returns 25% sampling rate
         final remoteSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFakeSettingsClient(
@@ -708,7 +750,10 @@ void main() {
         await pumpEventQueue();
 
         // THEN - remote settings enabled, but sdk_config ignored
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
         // Recording should start with local 100% (always records)
         expect(coordinator.recordingState, RecordingState.recording);
       });
@@ -716,6 +761,7 @@ void main() {
       test('fallback mode applies remote recordSessionsPercent', () async {
         // GIVEN - server returns 0% sampling rate (disable auto-recording)
         final remoteSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFakeSettingsClient(
@@ -741,13 +787,17 @@ void main() {
         await pumpEventQueue();
 
         // THEN - remote 0% overrides local 100%, recording does not start
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
         expect(coordinator.recordingState, RecordingState.notRecording);
       });
 
       test('strict mode disables when sdk_config is missing', () async {
         // GIVEN - server returns enabled but no sdk_config
         final remoteSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFakeSettingsClient(isEnabled: true),
@@ -770,7 +820,10 @@ void main() {
         await pumpEventQueue();
 
         // THEN - strict mode: sdk_config missing → never starts recording
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.disabled,
+        );
         expect(coordinator.recordingState, RecordingState.notRecording);
       });
 
@@ -781,6 +834,7 @@ void main() {
           // while the check is in-flight
           final completer = Completer<http.Response>();
           final delayedSettingsService = SettingsService(
+            storageProvider: storageProvider,
             token: 'test-token',
             logger: logger,
             httpClient: http_testing.MockClient((_) => completer.future),
@@ -807,16 +861,21 @@ void main() {
           expect(coordinator.recordingState, RecordingState.recording);
 
           // WHEN - settings respond with no sdk_config
-          completer.complete(http.Response(
-            jsonEncode({
-              'recording': {'is_enabled': true},
-            }),
-            200,
-          ));
+          completer.complete(
+            http.Response(
+              jsonEncode({
+                'recording': {'is_enabled': true},
+              }),
+              200,
+            ),
+          );
           await pumpEventQueue();
 
           // THEN - strict mode stops the in-progress recording
-          expect(coordinator.remoteSettingsState, RemoteSettingsState.disabled);
+          expect(
+            coordinator.remoteEnablementState,
+            RemoteEnablementState.disabled,
+          );
           expect(coordinator.recordingState, RecordingState.notRecording);
         },
       );
@@ -824,6 +883,7 @@ void main() {
       test('strict mode allows recording when sdk_config is present', () async {
         // GIVEN - server returns enabled with sdk_config
         final remoteSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFakeSettingsClient(
@@ -849,13 +909,17 @@ void main() {
         await pumpEventQueue();
 
         // THEN - strict mode: sdk_config present → allows recording
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
         expect(coordinator.recordingState, RecordingState.recording);
       });
 
       test('fallback mode keeps local config when network fails', () async {
         // GIVEN - network fails
         final errorSettingsService = SettingsService(
+          storageProvider: storageProvider,
           token: 'test-token',
           logger: logger,
           httpClient: createFailingHttpClient(),
@@ -879,7 +943,10 @@ void main() {
 
         // THEN - fallback mode: network error with no cache → keeps local config
         // isRecordingEnabled defaults to true (no cache), so recording continues
-        expect(coordinator.remoteSettingsState, RemoteSettingsState.enabled);
+        expect(
+          coordinator.remoteEnablementState,
+          RemoteEnablementState.enabled,
+        );
         expect(coordinator.recordingState, RecordingState.recording);
       });
     });

@@ -18,7 +18,7 @@ class FakeWidgetCoordinator implements WidgetCoordinator {
   RecordingState recordingState;
 
   @override
-  RemoteSettingsState remoteSettingsState;
+  RemoteEnablementState remoteEnablementState;
 
   @override
   bool isAppInForeground;
@@ -40,7 +40,7 @@ class FakeWidgetCoordinator implements WidgetCoordinator {
 
   FakeWidgetCoordinator({
     this.recordingState = RecordingState.notRecording,
-    this.remoteSettingsState = RemoteSettingsState.enabled,
+    this.remoteEnablementState = RemoteEnablementState.enabled,
     this.isAppInForeground = true,
     MixpanelLogger? logger,
     ValueNotifier<List<MaskRegionInfo>>? maskRegionsNotifier,

@@ -35,7 +35,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   bool _isDisposed = false;
 
   // Store the result of the settings check
-  RemoteSettingsState _remoteSettingsState = RemoteSettingsState.pending;
+  RemoteEnablementState _remoteEnablementState = RemoteEnablementState.pending;
 
   // Notifier for mask regions (for debug overlay)
   final ValueNotifier<List<MaskRegionInfo>> _maskRegions =
@@ -101,7 +101,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
 
   /// Remote settings state (pending, enabled, or disabled)
   @override
-  RemoteSettingsState get remoteSettingsState => _remoteSettingsState;
+  RemoteEnablementState get remoteEnablementState => _remoteEnablementState;
 
   /// Logger instance for this coordinator
   @override
@@ -287,71 +287,72 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     // Mark app as foregrounded (allows FrameMonitor captures)
     _isAppInForeground = true;
 
-    // Check remote settings on first foreground only
-    if (_remoteSettingsState == RemoteSettingsState.pending) {
-      _logger.debug(
-        'First foreground - checking remote settings',
-        tag: 'coordinator',
-      );
+    switch (_remoteEnablementState) {
+      case RemoteEnablementState.pending:
+        _logger.debug(
+          'First foreground - checking remote settings',
+          tag: 'coordinator',
+        );
 
-      // Wait for settings before starting recording (matches Android/iOS)
-      _settingsService
-          .fetchRemoteSettings()
-          .then((result) {
-            _remoteSettingsState = result.isRecordingEnabled
-                ? RemoteSettingsState.enabled
-                : RemoteSettingsState.disabled;
+        // Wait for settings before starting recording (matches Android/iOS)
+        _settingsService
+            .fetchRemoteSettings()
+            .then((result) {
+              _remoteEnablementState = result.isRecordingEnabled
+                  ? RemoteEnablementState.enabled
+                  : RemoteEnablementState.disabled;
 
-            if (!result.isRecordingEnabled) {
-              _logger.warning(
-                'Recording disabled by kill-switch',
+              if (!result.isRecordingEnabled) {
+                _logger.warning(
+                  'Recording disabled by remote enablement check',
+                  tag: 'coordinator',
+                );
+                stopRecording();
+                return;
+              }
+
+              // Apply remote config based on mode (may disable in strict mode)
+              _applyRemoteSettings(result);
+              if (_remoteEnablementState == RemoteEnablementState.disabled) {
+                return;
+              }
+
+              _logger.info(
+                'Recording allowed by remote settings',
                 tag: 'coordinator',
               );
-              stopRecording();
-              return;
-            }
 
-            // Apply remote config based on mode (may disable in strict mode)
-            _applyRemoteSettings(result);
-            if (_remoteSettingsState == RemoteSettingsState.disabled) {
-              return;
-            }
+              // Verify still in foreground after async settings check
+              if (!_isAppInForeground) {
+                _logger.debug(
+                  'App backgrounded during settings check, not starting recording',
+                  tag: 'coordinator',
+                );
+                return;
+              }
 
-            _logger.info(
-              'Recording allowed by remote settings',
-              tag: 'coordinator',
-            );
-
-            // Verify still in foreground after async settings check
-            if (!_isAppInForeground) {
-              _logger.debug(
-                'App backgrounded during settings check, not starting recording',
-                tag: 'coordinator',
+              // Auto-start recording after settings are resolved
+              startRecording(sessionsPercent: _autoRecordSessionsPercent);
+            })
+            .catchError((error) {
+              _logger.error(
+                'Settings check failed: $error',
+                null,
+                null,
+                'coordinator',
               );
-              return;
-            }
+              _remoteEnablementState = RemoteEnablementState.disabled;
+            });
 
-            // Auto-start recording after settings are resolved
-            _autoStartRecordingIfEnabled();
-          })
-          .catchError((error) {
-            _logger.error(
-              'Settings check failed: $error',
-              null,
-              null,
-              'coordinator',
-            );
-            _remoteSettingsState = RemoteSettingsState.disabled;
-          });
-    } else {
-      // Settings already resolved from previous foreground
-      _autoStartRecordingIfEnabled();
+      case RemoteEnablementState.enabled:
+        startRecording(sessionsPercent: _autoRecordSessionsPercent);
+
+      case RemoteEnablementState.disabled:
+        _logger.debug(
+          'Recording remotely disabled, not starting recording',
+          tag: 'coordinator',
+        );
     }
-  }
-
-  /// Auto-starts recording using the configured sampling rate.
-  void _autoStartRecordingIfEnabled() {
-    startRecording(sessionsPercent: _autoRecordSessionsPercent);
   }
 
   /// Applies remote settings to the coordinator based on [_remoteSettingsMode].
@@ -381,7 +382,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
             '- disabling recording',
             tag: 'coordinator',
           );
-          _remoteSettingsState = RemoteSettingsState.disabled;
+          _remoteEnablementState = RemoteEnablementState.disabled;
           stopRecording();
           return;
         }
@@ -436,7 +437,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     );
 
     // Don't allow recording if remotely disabled
-    if (_remoteSettingsState == RemoteSettingsState.disabled) {
+    if (_remoteEnablementState == RemoteEnablementState.disabled) {
       _logger.warning(
         'Cannot start recording - recording remotely disabled',
         tag: 'coordinator',

@@ -245,7 +245,7 @@ void main() {
     testWidgets('ignores pointer when settings are disabled', (tester) async {
       // GIVEN
       final fake = FakeWidgetCoordinator(
-        remoteSettingsState: RemoteSettingsState.disabled,
+        remoteEnablementState: RemoteEnablementState.disabled,
         recordingState: RecordingState.recording,
       );
 
@@ -660,7 +660,7 @@ void main() {
     ) async {
       // GIVEN
       final fake = FakeWidgetCoordinator(
-        remoteSettingsState: RemoteSettingsState.disabled,
+        remoteEnablementState: RemoteEnablementState.disabled,
         recordingState: RecordingState.recording,
       );
       final frameNotifier = ChangeNotifier();

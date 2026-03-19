@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_service.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_storage_provider.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
 
@@ -14,9 +15,15 @@ import 'helpers/fake_http_client.dart';
 void main() {
   group('SettingsService', () {
     final testToken = 'test-token-123';
+    final testLogger = MixpanelLogger(LogLevel.none);
+    late SettingsStorageProvider storageProvider;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      storageProvider = SettingsStorageProvider(
+        token: testToken,
+        logger: testLogger,
+      );
     });
 
     group('checkRecordingEnabled', () {
@@ -27,6 +34,7 @@ void main() {
           final expectedResult = true;
           final httpClient = createFakeSettingsClient(isEnabled: true);
           final service = SettingsService(
+            storageProvider: storageProvider,
             token: testToken,
             logger: MixpanelLogger(LogLevel.none),
             httpClient: httpClient,
@@ -47,6 +55,7 @@ void main() {
           final expectedResult = false;
           final httpClient = createFakeSettingsClient(isEnabled: false);
           final service = SettingsService(
+            storageProvider: storageProvider,
             token: testToken,
             logger: MixpanelLogger(LogLevel.none),
             httpClient: httpClient,
@@ -74,6 +83,7 @@ void main() {
         });
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -93,6 +103,7 @@ void main() {
         final expectedResult = true;
         final httpClient = createFailingHttpClient();
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -110,6 +121,7 @@ void main() {
         final expectedResult = true;
         final httpClient = createFakeHttpClient(statusCode: 500);
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -132,6 +144,7 @@ void main() {
           });
 
           final service = SettingsService(
+            storageProvider: storageProvider,
             token: testToken,
             logger: MixpanelLogger(LogLevel.none),
             httpClient: httpClient,
@@ -161,6 +174,7 @@ void main() {
         );
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -197,6 +211,7 @@ void main() {
         });
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -216,6 +231,7 @@ void main() {
         // GIVEN
         final httpClient = createFakeSettingsClient(isEnabled: true);
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -243,6 +259,7 @@ void main() {
         });
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -260,6 +277,7 @@ void main() {
         // GIVEN
         final httpClient = createFailingHttpClient();
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -289,6 +307,7 @@ void main() {
         });
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -318,6 +337,7 @@ void main() {
         });
 
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: httpClient,
@@ -338,13 +358,14 @@ void main() {
       test('is pending before any check', () {
         // GIVEN
         final service = SettingsService(
+          storageProvider: storageProvider,
           token: testToken,
           logger: MixpanelLogger(LogLevel.none),
           httpClient: createFakeSettingsClient(isEnabled: true),
         );
 
         // THEN
-        expect(service.remoteState, RemoteSettingsState.pending);
+        expect(service.remoteState, RemoteEnablementState.pending);
       });
 
       test(
@@ -352,6 +373,7 @@ void main() {
         () async {
           // GIVEN
           final service = SettingsService(
+            storageProvider: storageProvider,
             token: testToken,
             logger: MixpanelLogger(LogLevel.none),
             httpClient: createFakeSettingsClient(isEnabled: true),
@@ -361,7 +383,7 @@ void main() {
           await service.fetchRemoteSettings();
 
           // THEN
-          expect(service.remoteState, RemoteSettingsState.enabled);
+          expect(service.remoteState, RemoteEnablementState.enabled);
         },
       );
 
@@ -370,6 +392,7 @@ void main() {
         () async {
           // GIVEN
           final service = SettingsService(
+            storageProvider: storageProvider,
             token: testToken,
             logger: MixpanelLogger(LogLevel.none),
             httpClient: createFakeSettingsClient(isEnabled: false),
@@ -379,7 +402,7 @@ void main() {
           await service.fetchRemoteSettings();
 
           // THEN
-          expect(service.remoteState, RemoteSettingsState.disabled);
+          expect(service.remoteState, RemoteEnablementState.disabled);
         },
       );
     });
@@ -444,6 +467,7 @@ void main() {
       );
 
       final service = SettingsService(
+        storageProvider: storageProvider,
         token: testToken,
         logger: MixpanelLogger(LogLevel.none),
         httpClient: recorder.client,
@@ -462,7 +486,6 @@ void main() {
       expect(request.headers['Authorization'], expectedAuthHeader);
       expect(uri.queryParameters['recording'], '1');
       expect(uri.queryParameters['sdk_config'], '1');
-      expect(uri.queryParameters['platform'], 'flutter');
       expect(uri.queryParameters['mp_lib'], 'flutter-sr');
       expect(uri.queryParameters['\$lib_version'], endsWith('-flutter'));
       expect(uri.queryParameters['\$os'], anyOf('Android', 'iOS', 'Mac OS X'));

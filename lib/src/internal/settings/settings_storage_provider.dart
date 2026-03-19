@@ -8,7 +8,7 @@ import 'sdk_config.dart';
 
 /// Manages persistent storage of remote settings results.
 ///
-/// Caches recording kill-switch state and SDK config to SharedPreferences
+/// Caches recording enablement state and SDK config to SharedPreferences
 /// so they can be used as fallback values when the network is unavailable.
 ///
 /// Key prefix `mp_sr_flutter_` avoids conflicts with native SDK caches
@@ -27,8 +27,6 @@ class SettingsStorageProvider {
     required MixpanelLogger logger,
   }) : _token = token,
        _logger = logger;
-
-  // --- Recording Kill-Switch ---
 
   void saveRecordingDisabled() {
     try {

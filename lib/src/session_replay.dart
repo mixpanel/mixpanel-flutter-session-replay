@@ -16,6 +16,7 @@ import 'internal/session/session_manager.dart';
 import 'internal/upload/upload_service.dart';
 import 'internal/upload/payload_serializer.dart';
 import 'internal/settings/settings_service.dart';
+import 'internal/settings/settings_storage_provider.dart';
 import 'internal/session_replay_coordinator.dart';
 import 'internal/logger.dart';
 
@@ -203,11 +204,19 @@ class MixpanelSessionReplay {
         logger: logger,
       );
 
+      // Create shared HTTP client (or use injected one for testing)
+      final sharedHttpClient = httpClient ?? http.Client();
+
       // Create settings service (check will happen on first foreground)
+      final storageProvider = SettingsStorageProvider(
+        token: token,
+        logger: logger,
+      );
       final settingsService = SettingsService(
         token: token,
         logger: logger,
-        httpClient: httpClient,
+        httpClient: sharedHttpClient,
+        storageProvider: storageProvider,
       );
 
       // Create upload service with payload serializer
@@ -216,10 +225,10 @@ class MixpanelSessionReplay {
         eventQueue: queue,
         payloadSerializer: payloadSerializer,
         wifiOnly: options.platformOptions.mobile.wifiOnly,
-        getRemoteSettingsState: () => settingsService.remoteState,
+        getRemoteEnablementState: () => settingsService.remoteState,
         flushInterval: options.flushInterval,
         logger: logger,
-        httpClient: httpClient,
+        httpClient: sharedHttpClient,
       );
 
       logger.debug('Internal components created');

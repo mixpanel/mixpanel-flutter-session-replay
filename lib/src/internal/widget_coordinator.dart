@@ -19,7 +19,7 @@ abstract class WidgetCoordinator {
   RecordingState get recordingState;
 
   /// Remote settings state (pending, enabled, or disabled)
-  RemoteSettingsState get remoteSettingsState;
+  RemoteEnablementState get remoteEnablementState;
 
   /// Whether app is currently in foreground
   bool get isAppInForeground;

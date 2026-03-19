@@ -24,7 +24,9 @@ class InteractionDetector extends StatelessWidget {
 
   void _handlePointerDown(PointerDownEvent event) {
     // Skip processing if remotely disabled
-    if (coordinator.remoteSettingsState == RemoteSettingsState.disabled) return;
+    if (coordinator.remoteEnablementState == RemoteEnablementState.disabled) {
+      return;
+    }
 
     // Skip processing if recording is not active
     if (coordinator.recordingState != RecordingState.recording) return;
