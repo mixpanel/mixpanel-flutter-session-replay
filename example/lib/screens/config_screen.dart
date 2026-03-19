@@ -225,6 +225,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
                     ),
                     const SizedBox(height: 24),
                     _buildLogLevelDropdown(configVm, _isInitializing),
+                    const SizedBox(height: 16),
+                    _buildRemoteSettingsModeDropdown(configVm, _isInitializing),
                     if (_isMobilePlatform) ...[
                       const SizedBox(height: 16),
                       _buildSwitch(
@@ -289,6 +291,33 @@ class _ConfigScreenState extends State<ConfigScreen> {
         errorText: errorText,
         border: const OutlineInputBorder(),
       ),
+    );
+  }
+
+  Widget _buildRemoteSettingsModeDropdown(
+    ConfigModel configVm,
+    bool isInitializing,
+  ) {
+    const labels = {
+      RemoteSettingsMode.disabled: 'Disabled',
+      RemoteSettingsMode.strict: 'Strict',
+      RemoteSettingsMode.fallback: 'Fallback',
+    };
+
+    return DropdownButtonFormField<RemoteSettingsMode>(
+      value: configVm.remoteSettingsMode,
+      decoration: const InputDecoration(
+        labelText: 'Remote Settings Mode',
+        border: OutlineInputBorder(),
+      ),
+      items: RemoteSettingsMode.values.map((mode) {
+        return DropdownMenuItem(value: mode, child: Text(labels[mode]!));
+      }).toList(),
+      onChanged: isInitializing
+          ? null
+          : (value) {
+              if (value != null) configVm.setRemoteSettingsMode(value);
+            },
     );
   }
 

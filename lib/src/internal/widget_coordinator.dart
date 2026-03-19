@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../models/masking_directive.dart';
 import '../models/results.dart';
-import 'upload/settings_service.dart';
+import 'settings/settings_service.dart';
 import 'logger.dart';
 
 /// Abstract interface for widget-level coordinator operations
@@ -19,7 +19,7 @@ abstract class WidgetCoordinator {
   RecordingState get recordingState;
 
   /// Remote settings state (pending, enabled, or disabled)
-  RemoteSettingsState get remoteSettingsState;
+  RemoteEnablementState get remoteEnablementState;
 
   /// Whether app is currently in foreground
   bool get isAppInForeground;

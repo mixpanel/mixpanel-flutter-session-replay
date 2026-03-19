@@ -7,7 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../storage/event_queue_interface.dart';
 import 'payload_serializer.dart';
-import 'settings_service.dart';
+import '../settings/settings_service.dart';
 import '../logger.dart';
 import '../../models/results.dart';
 
@@ -63,9 +63,9 @@ class UploadService {
   /// Cutoff timestamp for current flush operation (dynamically updated by concurrent calls)
   DateTime? _flushCutoffTimestamp;
 
-  /// Callback to get the current remote settings state.
-  /// Flush operations are only allowed when state is [RemoteSettingsState.enabled].
-  final RemoteSettingsState Function() getRemoteSettingsState;
+  /// Callback to get the current remote enablement state.
+  /// Flush operations are only allowed when state is [RemoteEnablementState.enabled].
+  final RemoteEnablementState Function() getRemoteEnablementState;
 
   /// Whether this service has been disposed
   bool _isDisposed = false;
@@ -98,7 +98,7 @@ class UploadService {
     required this.eventQueue,
     required this.payloadSerializer,
     required this.wifiOnly,
-    required this.getRemoteSettingsState,
+    required this.getRemoteEnablementState,
     required Duration flushInterval,
     required MixpanelLogger logger,
     this.maxPayloadBytes = defaultMaxPayloadBytes,
@@ -157,8 +157,8 @@ class UploadService {
     );
 
     // Check remote settings state
-    final remoteState = getRemoteSettingsState();
-    if (remoteState != RemoteSettingsState.enabled) {
+    final remoteState = getRemoteEnablementState();
+    if (remoteState != RemoteEnablementState.enabled) {
       _logger.debug('Flush skipped - remote settings state: $remoteState');
       return;
     }
@@ -225,8 +225,8 @@ class UploadService {
   /// is a best-effort operation that may partially succeed.
   Future<FlushResult> flush() async {
     // Check remote settings state
-    final remoteState = getRemoteSettingsState();
-    if (remoteState != RemoteSettingsState.enabled) {
+    final remoteState = getRemoteEnablementState();
+    if (remoteState != RemoteEnablementState.enabled) {
       _logger.debug('Flush skipped - remote settings state: $remoteState');
       return FlushResult();
     }
@@ -506,6 +506,5 @@ class UploadService {
     _isDisposed = true;
 
     stopAutoFlush();
-    _httpClient.close();
   }
 }

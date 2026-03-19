@@ -2,7 +2,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/widget_coordinator.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
-import 'package:mixpanel_flutter_session_replay/src/internal/upload/settings_service.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_service.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/masking_directive.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/results.dart';
@@ -18,7 +18,7 @@ class FakeWidgetCoordinator implements WidgetCoordinator {
   RecordingState recordingState;
 
   @override
-  RemoteSettingsState remoteSettingsState;
+  RemoteEnablementState remoteEnablementState;
 
   @override
   bool isAppInForeground;
@@ -40,7 +40,7 @@ class FakeWidgetCoordinator implements WidgetCoordinator {
 
   FakeWidgetCoordinator({
     this.recordingState = RecordingState.notRecording,
-    this.remoteSettingsState = RemoteSettingsState.enabled,
+    this.remoteEnablementState = RemoteEnablementState.enabled,
     this.isAppInForeground = true,
     MixpanelLogger? logger,
     ValueNotifier<List<MaskRegionInfo>>? maskRegionsNotifier,

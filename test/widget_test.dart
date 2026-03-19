@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mixpanel_flutter_session_replay/src/internal/upload/settings_service.dart';
+import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_service.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/debug_overlay_colors.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/masking_directive.dart';
@@ -245,7 +245,7 @@ void main() {
     testWidgets('ignores pointer when settings are disabled', (tester) async {
       // GIVEN
       final fake = FakeWidgetCoordinator(
-        remoteSettingsState: RemoteSettingsState.disabled,
+        remoteEnablementState: RemoteEnablementState.disabled,
         recordingState: RecordingState.recording,
       );
 
@@ -660,7 +660,7 @@ void main() {
     ) async {
       // GIVEN
       final fake = FakeWidgetCoordinator(
-        remoteSettingsState: RemoteSettingsState.disabled,
+        remoteEnablementState: RemoteEnablementState.disabled,
         recordingState: RecordingState.recording,
       );
       final frameNotifier = ChangeNotifier();
