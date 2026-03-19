@@ -203,7 +203,5 @@ class SettingsService {
   void dispose() {
     if (_isDisposed) return;
     _isDisposed = true;
-
-    _httpClient.close();
   }
 }

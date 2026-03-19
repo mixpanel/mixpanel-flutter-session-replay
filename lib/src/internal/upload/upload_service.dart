@@ -506,6 +506,5 @@ class UploadService {
     _isDisposed = true;
 
     stopAutoFlush();
-    _httpClient.close();
   }
 }

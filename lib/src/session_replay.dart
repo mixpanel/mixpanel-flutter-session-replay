@@ -27,6 +27,7 @@ class MixpanelSessionReplay {
   static final Map<String, MixpanelSessionReplay> _instances = {};
 
   late SessionReplayCoordinator _coordinator;
+  late http.Client _httpClient;
   final MixpanelLogger _logger;
   final String _token;
 
@@ -204,14 +205,14 @@ class MixpanelSessionReplay {
         logger: logger,
       );
 
-      // Create shared HTTP client (or use injected one for testing)
-      final sharedHttpClient = httpClient ?? http.Client();
-
       // Create settings service (check will happen on first foreground)
       final storageProvider = SettingsStorageProvider(
         token: token,
         logger: logger,
       );
+      // Create shared HTTP client (each service borrows it; SDK owns the lifecycle)
+      final sharedHttpClient = httpClient ?? http.Client();
+
       final settingsService = SettingsService(
         token: token,
         logger: logger,
@@ -248,8 +249,9 @@ class MixpanelSessionReplay {
         debugOptions: options.debugOptions,
       );
 
-      // Wire up the coordinator to the instance
+      // Wire up the coordinator and shared HTTP client to the instance
       instance._coordinator = coordinator;
+      instance._httpClient = sharedHttpClient;
 
       // Register instance in registry
       _instances[token] = instance;
@@ -381,6 +383,9 @@ class MixpanelSessionReplay {
 
     // Dispose coordinator (handles flush, stops timers, closes connections)
     await _coordinator.dispose();
+
+    // Close shared HTTP client (after coordinator dispose so flush completes first)
+    _httpClient.close();
 
     // Remove from registry after cleanup is complete
     _instances.remove(_token);

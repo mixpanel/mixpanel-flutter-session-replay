@@ -571,7 +571,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     // STEP 2: Flush any pending events before cleanup
     await flush();
 
-    // STEP 3: Dispose services (stops timers, closes connections, closes database)
+    // STEP 3: Dispose services (stops timers, closes database)
     _uploadService.dispose();
     _settingsService.dispose();
     await _eventRecorder.dispose(); // Closes database connection
