@@ -34,7 +34,6 @@ class RRWebNodeIds {
   static const int style = 17;
   static const int styleText = 18;
   static const int body = 25;
-  static const int container = 27;
   static const int mainImage = 28;
   static const int imageContainer = 29;
 }

@@ -72,19 +72,10 @@ class RRWebEvent {
         screenshot.imageData[3] == 0x47;
     final mimeType = isPng ? 'image/png' : 'image/jpeg';
 
-    // CSS styling for phone frame (matches Android SDK)
+    // CSS styling — image fills viewport
     const cssText =
-        'body { display: flex; justify-content: center; align-items: center; '
-        'height: 100vh; margin: 0px;}'
-        '.phone { padding: 10px; border-radius: 50px; background-color: rgb(51, 51, 51); '
-        'box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px; position: relative; overflow: hidden; }'
-        '.phone::before, .phone::after { position: absolute; background-color: rgb(0, 0, 0); '
-        'width: 50px; height: 4px; border-radius: 2px; }'
-        '.phone::before { top: 8px; left: 50%; transform: translateX(-50%); }'
-        '.phone::after { bottom: 8px; left: 50%; transform: translateX(-50%); }'
-        '.screen { width: 100%; height: 100%; display: flex; justify-content: center; '
-        'align-items: center; background-color: white; border-radius: 40px; }'
-        '.screen img { width: 100%; height: auto; border-radius: 40px; }';
+        'body { margin: 0px; padding: 0px; }'
+        '.screen img { width: 100%; height: auto; display: block; }';
 
     return RRWebEvent(
       type: RRWebEventType.fullSnapshot,
@@ -135,27 +126,19 @@ class RRWebEvent {
                     {
                       'type': RRWebNodeType.element,
                       'tagName': 'div',
-                      'attributes': {'class': 'phone'},
+                      'attributes': {'class': 'screen'},
                       'childNodes': [
                         {
                           'type': RRWebNodeType.element,
-                          'tagName': 'div',
-                          'attributes': {'class': 'screen'},
-                          'childNodes': [
-                            {
-                              'type': RRWebNodeType.element,
-                              'tagName': 'img',
-                              'attributes': {
-                                'src': 'data:$mimeType;base64,$base64Image',
-                              },
-                              'childNodes': [],
-                              'id': RRWebNodeIds.mainImage,
-                            },
-                          ],
-                          'id': RRWebNodeIds.imageContainer,
+                          'tagName': 'img',
+                          'attributes': {
+                            'src': 'data:$mimeType;base64,$base64Image',
+                          },
+                          'childNodes': [],
+                          'id': RRWebNodeIds.mainImage,
                         },
                       ],
-                      'id': RRWebNodeIds.container,
+                      'id': RRWebNodeIds.imageContainer,
                     },
                   ],
                   'id': RRWebNodeIds.body,
