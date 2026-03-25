@@ -70,12 +70,9 @@ jobs:
             exit 1
           fi
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.41.2'
-          cache: false
 
       - name: Install dependencies
         run: flutter pub get
