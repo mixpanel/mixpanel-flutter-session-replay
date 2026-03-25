@@ -28,7 +28,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.38.0'
-          cache: true
+          cache: false
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -52,7 +52,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.41.2'
-          cache: true
+          cache: false
 
       - name: Install dependencies
         run: flutter pub get
@@ -94,7 +94,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.41.2'
-          cache: true
+          cache: false
 
       - name: Install dependencies
         run: flutter pub get
@@ -185,7 +185,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.41.2'
-          cache: true
+          cache: false
 
       - name: Setup Gradle
         uses: gradle/gradle-build-action@ac2d340dc04d9e1113182899e983b5400c17cda1  # v3.5.0
@@ -246,7 +246,7 @@ jobs:
         with:
           channel: stable
           flutter-version: '3.41.2'
-          cache: true
+          cache: false
 
       - name: Install dependencies
         run: flutter pub get
