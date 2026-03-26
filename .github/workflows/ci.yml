@@ -23,15 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Set up Flutter
-        run: |
-          git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1 "$RUNNER_TEMP/flutter"
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-        env:
-          FLUTTER_VERSION: '3.38.0'
-
-      - name: Initialize Flutter
-        run: flutter --version
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.38.0'
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -50,15 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Set up Flutter
-        run: |
-          git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1 "$RUNNER_TEMP/flutter"
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-        env:
-          FLUTTER_VERSION: '3.41.2'
-
-      - name: Initialize Flutter
-        run: flutter --version
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.41.2'
 
       - name: Install dependencies
         run: flutter pub get
@@ -95,15 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Set up Flutter
-        run: |
-          git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1 "$RUNNER_TEMP/flutter"
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-        env:
-          FLUTTER_VERSION: '3.41.2'
-
-      - name: Initialize Flutter
-        run: flutter --version
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.41.2'
 
       - name: Install dependencies
         run: flutter pub get
@@ -189,18 +171,12 @@ jobs:
           distribution: 'zulu'
           java-version: 17
 
-      - name: Set up Flutter
-        run: |
-          git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1 "$RUNNER_TEMP/flutter"
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-        env:
-          FLUTTER_VERSION: '3.41.2'
-
-      - name: Initialize Flutter
-        run: flutter --version
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.41.2'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1  # v4.4.4
+        uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f  # v6.0.1
 
       - name: Install dependencies
         run: flutter pub get
@@ -253,15 +229,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Set up Flutter
-        run: |
-          git clone https://github.com/flutter/flutter.git -b "$FLUTTER_VERSION" --depth 1 "$RUNNER_TEMP/flutter"
-          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
-        env:
-          FLUTTER_VERSION: '3.41.2'
-
-      - name: Initialize Flutter
-        run: flutter --version
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: '3.41.2'
 
       - name: Install dependencies
         run: flutter pub get
