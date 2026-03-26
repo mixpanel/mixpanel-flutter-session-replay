@@ -23,12 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.38.0'
-          cache: true
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -47,12 +44,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.41.2'
-          cache: true
 
       - name: Install dependencies
         run: flutter pub get
@@ -89,12 +83,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.41.2'
-          cache: true
 
       - name: Install dependencies
         run: flutter pub get
@@ -180,15 +171,12 @@ jobs:
           distribution: 'zulu'
           java-version: 17
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.41.2'
-          cache: true
 
       - name: Setup Gradle
-        uses: gradle/gradle-build-action@ac2d340dc04d9e1113182899e983b5400c17cda1  # v3.5.0
+        uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f  # v6.0.1
 
       - name: Install dependencies
         run: flutter pub get
@@ -241,12 +229,9 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      # Pinned to commit SHA for supply chain security — update hash when upgrading.
-      - uses: subosito/flutter-action@fd55f4c5af5b953cc57a2be44cb082c8f6635e8e # v2.21.0
+      - uses: ./.github/actions/setup-flutter
         with:
-          channel: stable
           flutter-version: '3.41.2'
-          cache: true
 
       - name: Install dependencies
         run: flutter pub get
