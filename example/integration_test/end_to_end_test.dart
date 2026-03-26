@@ -92,8 +92,7 @@ void main() {
     final node = screenshotEvent['data']['node'] as Map<String, dynamic>;
     final html = (node['childNodes'] as List)[1] as Map<String, dynamic>;
     final body = (html['childNodes'] as List)[1] as Map<String, dynamic>;
-    final phone = (body['childNodes'] as List)[0] as Map<String, dynamic>;
-    final screen = (phone['childNodes'] as List)[0] as Map<String, dynamic>;
+    final screen = (body['childNodes'] as List)[0] as Map<String, dynamic>;
     final img = (screen['childNodes'] as List)[0] as Map<String, dynamic>;
     final src = img['attributes']['src'] as String;
     expect(src, startsWith('data:image/jpeg;base64,'));
