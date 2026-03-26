@@ -10,6 +10,7 @@ class ConfigModel extends ChangeNotifier {
   String _autoRecordPercent = '100.0';
   String _storageQuota = '50';
   LogLevel _logLevel = LogLevel.debug;
+  RemoteSettingsMode _remoteSettingsMode = RemoteSettingsMode.disabled;
   bool _wifiOnly = false;
   bool _showDebugMaskOverlay = false;
   bool _autoMaskText = true;
@@ -28,6 +29,7 @@ class ConfigModel extends ChangeNotifier {
   String get autoRecordPercent => _autoRecordPercent;
   String get storageQuota => _storageQuota;
   LogLevel get logLevel => _logLevel;
+  RemoteSettingsMode get remoteSettingsMode => _remoteSettingsMode;
   bool get wifiOnly => _wifiOnly;
   bool get showDebugMaskOverlay => _showDebugMaskOverlay;
   bool get autoMaskText => _autoMaskText;
@@ -72,6 +74,11 @@ class ConfigModel extends ChangeNotifier {
 
   void setLogLevel(LogLevel value) {
     _logLevel = value;
+    notifyListeners();
+  }
+
+  void setRemoteSettingsMode(RemoteSettingsMode value) {
+    _remoteSettingsMode = value;
     notifyListeners();
   }
 
@@ -147,6 +154,7 @@ class ConfigModel extends ChangeNotifier {
       autoRecordPercent: double.parse(_autoRecordPercent),
       storageQuota: int.parse(_storageQuota),
       logLevel: _logLevel,
+      remoteSettingsMode: _remoteSettingsMode,
       wifiOnly: _wifiOnly,
       showDebugMaskOverlay: _showDebugMaskOverlay,
       autoMaskText: _autoMaskText,

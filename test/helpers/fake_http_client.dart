@@ -19,12 +19,21 @@ http.Client createFakeHttpClient({
 /// Creates a MockClient that returns a settings response.
 ///
 /// [isEnabled] controls whether recording is enabled in the response.
-http.Client createFakeSettingsClient({required bool isEnabled}) {
+/// [recordSessionsPercent] optionally includes sdk_config with the given value.
+http.Client createFakeSettingsClient({
+  required bool isEnabled,
+  double? recordSessionsPercent,
+}) {
   return http_testing.MockClient((request) async {
-    final responseBody = jsonEncode({
+    final response = <String, dynamic>{
       'recording': {'is_enabled': isEnabled},
-    });
-    return http.Response(responseBody, 200);
+    };
+    if (recordSessionsPercent != null) {
+      response['sdk_config'] = {
+        'config': {'record_sessions_percent': recordSessionsPercent},
+      };
+    }
+    return http.Response(jsonEncode(response), 200);
   });
 }
 

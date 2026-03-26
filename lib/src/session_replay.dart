@@ -15,7 +15,8 @@ import 'internal/storage/sqlite_event_queue.dart';
 import 'internal/session/session_manager.dart';
 import 'internal/upload/upload_service.dart';
 import 'internal/upload/payload_serializer.dart';
-import 'internal/upload/settings_service.dart';
+import 'internal/settings/settings_service.dart';
+import 'internal/settings/settings_storage_provider.dart';
 import 'internal/session_replay_coordinator.dart';
 import 'internal/logger.dart';
 
@@ -26,6 +27,7 @@ class MixpanelSessionReplay {
   static final Map<String, MixpanelSessionReplay> _instances = {};
 
   late SessionReplayCoordinator _coordinator;
+  late http.Client _httpClient;
   final MixpanelLogger _logger;
   final String _token;
 
@@ -204,10 +206,18 @@ class MixpanelSessionReplay {
       );
 
       // Create settings service (check will happen on first foreground)
+      final storageProvider = SettingsStorageProvider(
+        token: token,
+        logger: logger,
+      );
+      // Create shared HTTP client (each service borrows it; SDK owns the lifecycle)
+      final sharedHttpClient = httpClient ?? http.Client();
+
       final settingsService = SettingsService(
         token: token,
         logger: logger,
-        httpClient: httpClient,
+        httpClient: sharedHttpClient,
+        storageProvider: storageProvider,
       );
 
       // Create upload service with payload serializer
@@ -216,10 +226,10 @@ class MixpanelSessionReplay {
         eventQueue: queue,
         payloadSerializer: payloadSerializer,
         wifiOnly: options.platformOptions.mobile.wifiOnly,
-        getRemoteSettingsState: () => settingsService.remoteState,
+        getRemoteEnablementState: () => settingsService.remoteState,
         flushInterval: options.flushInterval,
         logger: logger,
-        httpClient: httpClient,
+        httpClient: sharedHttpClient,
       );
 
       logger.debug('Internal components created');
@@ -235,11 +245,13 @@ class MixpanelSessionReplay {
         sessionManager: sessionManager,
         logger: logger,
         autoRecordSessionsPercent: options.autoRecordSessionsPercent,
+        remoteSettingsMode: options.remoteSettingsMode,
         debugOptions: options.debugOptions,
       );
 
-      // Wire up the coordinator to the instance
+      // Wire up the coordinator and shared HTTP client to the instance
       instance._coordinator = coordinator;
+      instance._httpClient = sharedHttpClient;
 
       // Register instance in registry
       _instances[token] = instance;
@@ -371,6 +383,9 @@ class MixpanelSessionReplay {
 
     // Dispose coordinator (handles flush, stops timers, closes connections)
     await _coordinator.dispose();
+
+    // Close shared HTTP client (after coordinator dispose so flush completes first)
+    _httpClient.close();
 
     // Remove from registry after cleanup is complete
     _instances.remove(_token);
