@@ -30,7 +30,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mixpanel_flutter_session_replay: 0.1.0-beta.1
+  mixpanel_flutter_session_replay: 0.1.0-beta2
 ```
 
 ## Initialize

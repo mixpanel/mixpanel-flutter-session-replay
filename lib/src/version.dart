@@ -1,7 +1,7 @@
 import 'dart:io' show Platform;
 
 /// SDK version constant. Update this alongside pubspec.yaml when releasing.
-const String sdkVersion = '0.1.0-beta.1-flutter';
+const String sdkVersion = '0.1.0-beta2-flutter';
 
 /// Operating system name for query parameters ($os).
 /// Computed once at startup since it never changes.
