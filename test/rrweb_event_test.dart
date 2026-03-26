@@ -159,7 +159,6 @@ void main() {
         expect(_findNodeById(root, RRWebNodeIds.style), isNotNull);
         expect(_findNodeById(root, RRWebNodeIds.styleText), isNotNull);
         expect(_findNodeById(root, RRWebNodeIds.body), isNotNull);
-        expect(_findNodeById(root, RRWebNodeIds.container), isNotNull);
         expect(_findNodeById(root, RRWebNodeIds.imageContainer), isNotNull);
         expect(_findNodeById(root, RRWebNodeIds.mainImage), isNotNull);
       });

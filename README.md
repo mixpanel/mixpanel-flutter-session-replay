@@ -30,7 +30,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  mixpanel_flutter_session_replay: 0.1.0-beta.1
+  mixpanel_flutter_session_replay: 0.1.0-beta.2
 ```
 
 ## Initialize
@@ -155,7 +155,7 @@ sessionReplay.stopRecording();
 |----------|----------|
 | We have a sensitive screen we don't want to capture | When user is about to access the sensitive screen, call `.stopRecording()`. To resume recording once they leave this screen, you can resume recording with `.startRecording()` |
 | We only want to record certain types of users (e.g. Free plan users only) | Using your application code, determine if current user meets the criteria of users you wish to capture. If they do, then call `.startRecording()` to begin recording |
-| We only want to users utilizing certain features | When user is about to access the feature you wish to capture replays for, call `.startRecording()` to begin recording |
+| We only want to record users utilizing certain features | When user is about to access the feature you wish to capture replays for, call `.startRecording()` to begin recording |
 
 ## Additional configuration options
 
@@ -275,7 +275,7 @@ final result = await MixpanelSessionReplay.initialize(
 
 Server-Side Stitching allows you to easily watch Replays for events that were not fired from the SDK.
 
-It works by inferring the Replay that an event belong using the Distinct ID and time property attached to the event. This is especially useful if you have events coming in from multiple sources.
+It works by inferring the Replay that an event belongs to using the Distinct ID and time property attached to the event. This is especially useful if you have events coming in from multiple sources.
 
 For example, let's say a user with Distinct ID "ABC" has a Replay recorded from 1-2pm. Two hours later, an event was sent from your warehouse with a timestamp of 1:35pm with Distinct ID "ABC". Server-Side Stitching will infer that the event should belong in the same Replay.
 
@@ -389,13 +389,13 @@ When you enable Session Replay, use the above proxy metric to determine a starti
 
 The bandwidth impact of Session Replay depends on the setting of the [`wifiOnly` parameter](#additional-configuration-options).
 
-By default, `wifiOnly` is set to `true`, which means replay events are only flushed to the server when the device has a wifi connection. If there is no wifi, flushes are skipped, and the events remain in the in-memory queue until WiFi is restored. This ensures no additional cellular data is used, preventing users from incurring additional data charges.
+By default, `wifiOnly` is set to `true`, which means replay events are only flushed to the server when the device has a wifi connection. If there is no wifi, flushes are skipped, and the events remain in the local disk queue until WiFi is restored. This ensures no additional cellular data is used, preventing users from incurring additional data charges.
 
 When `wifiOnly` is set to `false`, replay events are flushed with any available network connection, including cellular. In this case, the amount of cellular data consumed depends on the intensity of user interactions and the typical session length of your app. Users may incur additional data charges if large amounts of data are transmitted over cellular connections.
 
 ### How does Session Replay for mobile work if my app is offline?
 
-Session Replay for mobile does not work in offline mode.
+Session Replay events are saved to a local disk queue when no network connection is available (or when `wifiOnly` is `true` and there is no WiFi). The SDK will automatically flush queued events once a suitable connection is restored. However, the queue is **not** persisted across app restarts — any events that have not been flushed before the app is terminated will be lost.
 
 ## Masking behavior
 
@@ -547,6 +547,7 @@ Without any masking directive, auto-masking applies based on `autoMaskedViews` c
 |----------|------|-------------|
 | `recordingState` | `RecordingState` | Current recording state (notRecording, initializing, recording) |
 | `distinctId` | `String` | Current user distinct ID |
+| `replayId` | `String?` | Replay ID of the current recording session, or null if not recording |
 
 ### SessionReplayOptions
 
