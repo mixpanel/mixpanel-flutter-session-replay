@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import '../models/configuration.dart';
 import '../models/debug_overlay_colors.dart';
 import '../models/masking_directive.dart';
 import '../models/results.dart';
@@ -10,7 +11,7 @@ import 'background_task_manager.dart';
 import 'event_recorder.dart';
 import 'screenshot_capturer.dart';
 import 'upload/upload_service.dart';
-import 'upload/settings_service.dart';
+import 'settings/settings_service.dart';
 import 'session/session_manager.dart';
 import 'widget_coordinator.dart';
 import 'session_replay_sender.dart';
@@ -34,14 +35,17 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   bool _isDisposed = false;
 
   // Store the result of the settings check
-  RemoteSettingsState _remoteSettingsState = RemoteSettingsState.pending;
+  RemoteEnablementState _remoteEnablementState = RemoteEnablementState.pending;
 
   // Notifier for mask regions (for debug overlay)
   final ValueNotifier<List<MaskRegionInfo>> _maskRegions =
       ValueNotifier<List<MaskRegionInfo>>([]);
 
   // Store auto-record configuration for lifecycle events
-  final double _autoRecordSessionsPercent;
+  double _autoRecordSessionsPercent;
+
+  // Remote settings mode
+  final RemoteSettingsMode _remoteSettingsMode;
 
   // Debug options configuration (null = disabled)
   final DebugOptions? _debugOptions;
@@ -57,6 +61,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     required SessionManager sessionManager,
     required MixpanelLogger logger,
     required double autoRecordSessionsPercent,
+    required RemoteSettingsMode remoteSettingsMode,
     required DebugOptions? debugOptions,
     BackgroundTaskManager? backgroundTaskManager,
   }) : _screenshotCapturer = screenshotCapturer,
@@ -68,6 +73,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
            backgroundTaskManager ?? BackgroundTaskManager(),
        _logger = logger,
        _autoRecordSessionsPercent = autoRecordSessionsPercent,
+       _remoteSettingsMode = remoteSettingsMode,
        _debugOptions = debugOptions {
     // Note: We do NOT auto-start recording in constructor
     // Recording will be started by LifecycleObserver when it detects app is resumed
@@ -95,7 +101,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
 
   /// Remote settings state (pending, enabled, or disabled)
   @override
-  RemoteSettingsState get remoteSettingsState => _remoteSettingsState;
+  RemoteEnablementState get remoteEnablementState => _remoteEnablementState;
 
   /// Logger instance for this coordinator
   @override
@@ -281,69 +287,129 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     // Mark app as foregrounded (allows FrameMonitor captures)
     _isAppInForeground = true;
 
-    // Check remote settings on first foreground only
-    if (_remoteSettingsState == RemoteSettingsState.pending) {
-      _logger.debug(
-        'First foreground - checking remote settings',
+    switch (_remoteEnablementState) {
+      case RemoteEnablementState.pending:
+        _logger.debug(
+          'First foreground - checking remote settings',
+          tag: 'coordinator',
+        );
+
+        // Wait for settings before starting recording (matches Android/iOS)
+        _settingsService
+            .fetchRemoteSettings()
+            .then((result) {
+              _remoteEnablementState = result.isRecordingEnabled
+                  ? RemoteEnablementState.enabled
+                  : RemoteEnablementState.disabled;
+
+              if (!result.isRecordingEnabled) {
+                _logger.warning(
+                  'Recording disabled by remote enablement check',
+                  tag: 'coordinator',
+                );
+                stopRecording();
+                return;
+              }
+
+              // Apply remote config based on mode (may disable in strict mode)
+              _applyRemoteSettings(result);
+              if (_remoteEnablementState == RemoteEnablementState.disabled) {
+                return;
+              }
+
+              _logger.info(
+                'Recording allowed by remote settings',
+                tag: 'coordinator',
+              );
+
+              // Verify still in foreground after async settings check
+              if (!_isAppInForeground) {
+                _logger.debug(
+                  'App backgrounded during settings check, not starting recording',
+                  tag: 'coordinator',
+                );
+                return;
+              }
+
+              // Auto-start recording after settings are resolved
+              startRecording(sessionsPercent: _autoRecordSessionsPercent);
+            })
+            .catchError((error) {
+              _logger.error(
+                'Settings check failed: $error',
+                null,
+                null,
+                'coordinator',
+              );
+              _remoteEnablementState = RemoteEnablementState.disabled;
+            });
+
+      case RemoteEnablementState.enabled:
+        startRecording(sessionsPercent: _autoRecordSessionsPercent);
+
+      case RemoteEnablementState.disabled:
+        _logger.debug(
+          'Recording remotely disabled, not starting recording',
+          tag: 'coordinator',
+        );
+    }
+  }
+
+  /// Applies remote settings to the coordinator based on [_remoteSettingsMode].
+  ///
+  /// In [RemoteSettingsMode.disabled] mode, remote SDK config values are ignored.
+  ///
+  /// In [RemoteSettingsMode.strict] mode, if the API call failed (isFromCache)
+  /// or sdk_config is missing, recording is disabled entirely.
+  ///
+  /// In [RemoteSettingsMode.fallback] mode, remote/cached values are applied
+  /// when available, otherwise local config is kept.
+  void _applyRemoteSettings(RemoteSettingsResult result) {
+    switch (_remoteSettingsMode) {
+      case RemoteSettingsMode.disabled:
+        _logger.info(
+          'Remote settings mode is disabled, using local config',
+          tag: 'coordinator',
+        );
+        return;
+
+      case RemoteSettingsMode.strict:
+        if (result.isFromCache || result.sdkConfig == null) {
+          _logger.warning(
+            'Strict mode: remote settings unavailable '
+            '(fromCache=${result.isFromCache}, '
+            'sdkConfig=${result.sdkConfig != null ? "present" : "null"}) '
+            '- disabling recording',
+            tag: 'coordinator',
+          );
+          _remoteEnablementState = RemoteEnablementState.disabled;
+          stopRecording();
+          return;
+        }
+        _applyRemoteConfigValues(result);
+
+      case RemoteSettingsMode.fallback:
+        _applyRemoteConfigValues(result);
+    }
+  }
+
+  /// Applies individual remote config values to the coordinator.
+  void _applyRemoteConfigValues(RemoteSettingsResult result) {
+    final percent = result.sdkConfig?.recordSessionsPercent;
+    if (percent == null) return;
+
+    if (percent >= 0.0 && percent <= 100.0) {
+      _logger.info(
+        'Applying remote recordSessionsPercent: $percent',
         tag: 'coordinator',
       );
-
-      // Launch async settings check without blocking
-      _settingsService
-          .checkRecordingEnabled()
-          .then((isEnabled) {
-            _remoteSettingsState = isEnabled
-                ? RemoteSettingsState.enabled
-                : RemoteSettingsState.disabled;
-
-            if (!isEnabled) {
-              _logger.warning(
-                'Recording remotely disabled - stopping SDK',
-                tag: 'coordinator',
-              );
-
-              // Stop any recording that may have started while check was pending
-              // flush() inside stopRecording() is a no-op since remote state
-              // is already set to disabled above
-              stopRecording();
-              return;
-            }
-
-            _logger.info(
-              'Recording enabled by remote settings',
-              tag: 'coordinator',
-            );
-
-            // Verify still in foreground after async settings check
-            if (!_isAppInForeground) {
-              _logger.debug(
-                'App backgrounded during settings check, not starting upload service',
-                tag: 'coordinator',
-              );
-              return;
-            }
-          })
-          .catchError((error) {
-            _logger.error(
-              'Settings check failed: $error',
-              null,
-              null,
-              'coordinator',
-            );
-            _remoteSettingsState = RemoteSettingsState.disabled;
-
-            // Stop any recording that may have started while check was pending
-            // flush() inside stopRecording() is a no-op since remote state
-            // is already set to disabled above
-            stopRecording();
-          });
-    }
-
-    // Auto-start recording if enabled (matches Android behavior)
-    // Recording can start even if settings check is pending (state will be checked when uploading)
-    // This creates a new session on each foreground transition
-    if (_autoRecordSessionsPercent > 0) {
-      startRecording(sessionsPercent: _autoRecordSessionsPercent);
+      _autoRecordSessionsPercent = percent;
+    } else {
+      _logger.warning(
+        'Invalid remote recordSessionsPercent value: $percent. '
+        'Must be between 0.0 and 100.0.',
+        tag: 'coordinator',
+      );
     }
   }
 
@@ -371,7 +437,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     );
 
     // Don't allow recording if remotely disabled
-    if (_remoteSettingsState == RemoteSettingsState.disabled) {
+    if (_remoteEnablementState == RemoteEnablementState.disabled) {
       _logger.warning(
         'Cannot start recording - recording remotely disabled',
         tag: 'coordinator',
@@ -505,7 +571,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     // STEP 2: Flush any pending events before cleanup
     await flush();
 
-    // STEP 3: Dispose services (stops timers, closes connections, closes database)
+    // STEP 3: Dispose services (stops timers, closes database)
     _uploadService.dispose();
     _settingsService.dispose();
     await _eventRecorder.dispose(); // Closes database connection

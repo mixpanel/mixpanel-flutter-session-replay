@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 
 import '../internal/widget_coordinator.dart';
 import '../internal/capture/capture_scheduler.dart';
-import '../internal/upload/settings_service.dart';
+import '../internal/settings/settings_service.dart';
 import '../models/debug_overlay_colors.dart';
 import '../models/masking_directive.dart';
 import '../models/results.dart';
@@ -54,8 +54,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
     if (!mounted) return;
 
     // Skip processing if remotely disabled
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 
@@ -72,8 +72,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
 
   void _attemptCapture() {
     // Skip processing if remotely disabled
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 
@@ -98,8 +98,8 @@ class _FrameMonitorState extends State<FrameMonitor> {
     if (!mounted) return;
 
     // Skip if remotely disabled (handles scheduled captures from before settings check)
-    if (widget.coordinator.remoteSettingsState ==
-        RemoteSettingsState.disabled) {
+    if (widget.coordinator.remoteEnablementState ==
+        RemoteEnablementState.disabled) {
       return;
     }
 

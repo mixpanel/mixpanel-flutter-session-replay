@@ -22,6 +22,7 @@ class SessionReplayOptions {
     this.autoMaskedViews = const {AutoMaskedView.text, AutoMaskedView.image},
     this.flushInterval = const Duration(seconds: 10),
     this.autoRecordSessionsPercent = 100.0,
+    this.remoteSettingsMode = RemoteSettingsMode.disabled,
     this.storageQuotaMB = 50,
     this.logLevel = LogLevel.none,
     this.platformOptions = const PlatformOptions(),
@@ -44,6 +45,16 @@ class SessionReplayOptions {
 
   /// Percentage of sessions to automatically record, 0-100 (default: 100.0)
   final double autoRecordSessionsPercent;
+
+  /// Controls how remote configuration settings are fetched and applied.
+  ///
+  /// Remote settings allow server-side control over session replay parameters
+  /// (e.g., sampling rate) without requiring an app update.
+  ///
+  /// - [RemoteSettingsMode.disabled] (default): Ignores remote SDK config values.
+  /// - [RemoteSettingsMode.strict]: Requires successful fetch; no replays sent on failure.
+  /// - [RemoteSettingsMode.fallback]: Uses remote config when available, falls back to cache or local config.
+  final RemoteSettingsMode remoteSettingsMode;
 
   /// Maximum MB for event queue (default: 50)
   final int storageQuotaMB;

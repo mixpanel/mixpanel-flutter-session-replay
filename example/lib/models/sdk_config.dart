@@ -11,6 +11,7 @@ class SdkConfig {
     required this.autoRecordPercent,
     required this.storageQuota,
     required this.logLevel,
+    required this.remoteSettingsMode,
     required this.wifiOnly,
     required this.showDebugMaskOverlay,
     required this.autoMaskText,
@@ -23,6 +24,7 @@ class SdkConfig {
   final double autoRecordPercent; // 0-100
   final int storageQuota; // MB
   final LogLevel logLevel;
+  final RemoteSettingsMode remoteSettingsMode;
   final bool wifiOnly;
   final bool showDebugMaskOverlay;
   final bool autoMaskText;
@@ -37,6 +39,7 @@ class SdkConfig {
       autoRecordPercent: 100.0,
       storageQuota: 50,
       logLevel: LogLevel.debug,
+      remoteSettingsMode: RemoteSettingsMode.disabled,
       wifiOnly: false,
       showDebugMaskOverlay: false,
       autoMaskText: true,
@@ -62,6 +65,7 @@ class SdkConfig {
       logLevel: logLevel,
       flushInterval: Duration(seconds: flushInterval),
       autoRecordSessionsPercent: autoRecordPercent,
+      remoteSettingsMode: remoteSettingsMode,
       storageQuotaMB: storageQuota,
       platformOptions: PlatformOptions(
         mobile: MobileOptions(wifiOnly: wifiOnly),

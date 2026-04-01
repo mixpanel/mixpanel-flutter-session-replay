@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter/gestures.dart';
 
 import '../internal/widget_coordinator.dart';
-import '../internal/upload/settings_service.dart';
+import '../internal/settings/settings_service.dart';
 import '../models/results.dart';
 import '../models/rrweb_types.dart';
 
@@ -24,7 +24,9 @@ class InteractionDetector extends StatelessWidget {
 
   void _handlePointerDown(PointerDownEvent event) {
     // Skip processing if remotely disabled
-    if (coordinator.remoteSettingsState == RemoteSettingsState.disabled) return;
+    if (coordinator.remoteEnablementState == RemoteEnablementState.disabled) {
+      return;
+    }
 
     // Skip processing if recording is not active
     if (coordinator.recordingState != RecordingState.recording) return;
