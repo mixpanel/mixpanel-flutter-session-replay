@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.mixpanel.flutter_session_replay"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 21
