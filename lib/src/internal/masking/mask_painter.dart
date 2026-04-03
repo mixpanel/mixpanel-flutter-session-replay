@@ -40,6 +40,8 @@ class MaskPainter {
         ..style = PaintingStyle.fill;
 
       for (final maskInfo in maskRegions) {
+        // Skip unmask regions — they exist only for debug overlay visualization
+        if (maskInfo.source == MaskSource.unmask) continue;
         canvas.drawRect(maskInfo.bounds, maskPaint);
       }
 
