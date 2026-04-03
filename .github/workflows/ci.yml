@@ -17,7 +17,7 @@ jobs:
   # job resolves only production dependencies and runs analysis without tests.
   compat-check:
     name: Compatibility Check (Flutter 3.38.0)
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 15
 
     steps:
@@ -38,7 +38,7 @@ jobs:
 
   build:
     name: Build & Unit Tests
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
@@ -77,7 +77,7 @@ jobs:
   test-ios:
     name: Integration Tests (iOS Simulator)
     needs: [compat-check, build]
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
@@ -223,7 +223,7 @@ jobs:
   test-macos:
     name: Integration Tests (macOS Desktop)
     needs: [compat-check, build]
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
