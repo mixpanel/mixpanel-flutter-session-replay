@@ -1,3 +1,18 @@
+## 0.1.0-beta.3
+
+### Features
+
+* remote configuration (#7)
+
+### Bug Fixes
+
+* Don't mask "unmask" debug decisions (#21)
+
+### Other
+
+* release 0.1.0-beta.2 (#19)
+
+
 ## 0.1.0-beta.2
 
 ### Bug Fixes
