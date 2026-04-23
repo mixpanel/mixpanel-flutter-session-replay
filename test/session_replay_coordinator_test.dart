@@ -275,6 +275,160 @@ void main() {
       });
     });
 
+    group('pauseRecording / resumeRecording', () {
+      test('pauseRecording transitions from recording to paused', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        expect(coordinator.recordingState, RecordingState.recording);
+
+        // WHEN
+        coordinator.pauseRecording();
+
+        // THEN
+        expect(coordinator.recordingState, RecordingState.paused);
+      });
+
+      test('pauseRecording preserves the current replay ID', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        final replayIdBefore = coordinator.replayId;
+        expect(replayIdBefore, isNotNull);
+
+        // WHEN
+        coordinator.pauseRecording();
+
+        // THEN
+        expect(coordinator.replayId, replayIdBefore);
+      });
+
+      test('pauseRecording is a no-op when not recording', () {
+        // GIVEN
+        final coordinator = createCoordinator();
+        expect(coordinator.recordingState, RecordingState.notRecording);
+
+        // WHEN
+        coordinator.pauseRecording();
+
+        // THEN
+        expect(coordinator.recordingState, RecordingState.notRecording);
+      });
+
+      test(
+        'resumeRecording transitions from paused back to recording',
+        () async {
+          // GIVEN
+          final coordinator = createCoordinator();
+          coordinator.startRecording(sessionsPercent: 100.0);
+          await pumpEventQueue();
+          coordinator.pauseRecording();
+          expect(coordinator.recordingState, RecordingState.paused);
+
+          // WHEN
+          coordinator.resumeRecording();
+
+          // THEN
+          expect(coordinator.recordingState, RecordingState.recording);
+        },
+      );
+
+      test('resumeRecording keeps the same replay ID', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        final replayIdBefore = coordinator.replayId;
+        coordinator.pauseRecording();
+
+        // WHEN
+        coordinator.resumeRecording();
+
+        // THEN
+        expect(coordinator.replayId, replayIdBefore);
+      });
+
+      test('resumeRecording is a no-op when not paused', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        expect(coordinator.recordingState, RecordingState.recording);
+
+        // WHEN - call resume while actively recording
+        coordinator.resumeRecording();
+
+        // THEN - still recording, no state corruption
+        expect(coordinator.recordingState, RecordingState.recording);
+      });
+
+      test('captureInteraction is a no-op while paused', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        coordinator.pauseRecording();
+
+        // Drain any events queued during startRecording
+        final firstEvent = await eventQueue.fetchOldest();
+        final baseline = firstEvent == null
+            ? 0
+            : (await eventQueue.fetchBatch(
+                sessionId: firstEvent.sessionId,
+                distinctId: firstEvent.distinctId,
+                maxBytes: 1 << 20,
+                maxCount: 100,
+              )).where((e) => e.type == EventType.interaction).length;
+
+        // WHEN
+        coordinator.captureInteraction(7, const Offset(10, 10));
+        await pumpEventQueue();
+
+        // THEN - no new interaction event captured
+        final afterEvent = await eventQueue.fetchOldest();
+        final after = afterEvent == null
+            ? 0
+            : (await eventQueue.fetchBatch(
+                sessionId: afterEvent.sessionId,
+                distinctId: afterEvent.distinctId,
+                maxBytes: 1 << 20,
+                maxCount: 100,
+              )).where((e) => e.type == EventType.interaction).length;
+        expect(after, baseline);
+      });
+
+      test('pause/resume preserves session across the cycle', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        final sessionBefore = sessionManager.getCurrentSession();
+
+        // WHEN
+        coordinator.pauseRecording();
+        coordinator.resumeRecording();
+
+        // THEN - same session ID on the other side
+        final sessionAfter = sessionManager.getCurrentSession();
+        expect(sessionAfter.id, sessionBefore.id);
+        expect(coordinator.recordingState, RecordingState.recording);
+      });
+
+      test('pauseRecording is safe to call after dispose', () async {
+        // GIVEN
+        final coordinator = createCoordinator();
+        coordinator.startRecording(sessionsPercent: 100.0);
+        await pumpEventQueue();
+        await coordinator.dispose();
+
+        // WHEN / THEN - should not throw
+        coordinator.pauseRecording();
+        coordinator.resumeRecording();
+      });
+    });
+
     group('captureInteraction', () {
       test('records interaction when recording is active', () async {
         // GIVEN

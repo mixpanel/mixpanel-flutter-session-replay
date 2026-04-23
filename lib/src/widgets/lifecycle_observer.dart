@@ -5,13 +5,15 @@ import '../internal/widget_coordinator.dart';
 /// Observes app lifecycle state changes and flushes queued events when the app
 /// is backgrounded or minimized.
 ///
-/// This widget monitors [AppLifecycleState.hidden] which is triggered when:
-/// - Mobile (iOS/Android): App is backgrounded
-/// - Desktop (macOS/Windows/Linux): Windows are minimized or hidden
-/// - Web: Browser tab is backgrounded
+/// The observer treats [AppLifecycleState.inactive] as still foreground.
+/// Only transitions into [AppLifecycleState.hidden], [AppLifecycleState.paused]
+/// or [AppLifecycleState.detached] are reported as backgrounding, which
+/// prevents transient inactive states (e.g. presenting a native full-screen
+/// component, pulling down the notification shade, incoming call overlay)
+/// from terminating the current replay session.
 ///
-/// When the app enters the hidden state, all queued session replay events are
-/// immediately flushed to ensure data isn't lost.
+/// When the app becomes non-visible, all queued session replay events are
+/// flushed so data isn't lost.
 class LifecycleObserver extends StatefulWidget {
   const LifecycleObserver({
     super.key,
@@ -72,21 +74,25 @@ class _LifecycleObserverState extends State<LifecycleObserver>
         ? _getVisibilityLevel(_lastState!)
         : null;
 
-    // Detect transition to inactive
-    // Only trigger if coming from a MORE visible state (resumed)
-    if (state == AppLifecycleState.inactive &&
+    // Visibility threshold: states at or above are considered "visible".
+    // `inactive` is intentionally treated as visible so that transient
+    // inactive states (native full-screen components, notification shade,
+    // incoming call UI, app switcher) don't terminate the current session.
+    const visibleThreshold = 2;
+
+    // Detect transition to a non-visible state from a visible one.
+    if (currentLevel < visibleThreshold &&
         lastLevel != null &&
-        lastLevel > currentLevel) {
+        lastLevel >= visibleThreshold) {
       widget.coordinator.logger.info(
-        'LifecycleObserver detected app becoming inactive',
+        'LifecycleObserver detected app becoming non-visible',
       );
       widget.coordinator.onAppBackgrounded();
     }
 
-    // Detect transition to resumed
-    // Trigger if: no previous state OR coming from a LESS visible state
+    // Detect transition to resumed from a non-visible state (or initial).
     if (state == AppLifecycleState.resumed &&
-        (lastLevel == null || lastLevel < currentLevel)) {
+        (lastLevel == null || lastLevel < visibleThreshold)) {
       widget.coordinator.logger.info('LifecycleObserver detected app resuming');
       widget.coordinator.onAppForegrounded();
     }

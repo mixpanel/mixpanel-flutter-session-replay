@@ -112,11 +112,12 @@ class SessionReplayCoordinator implements WidgetCoordinator {
 
   /// Get the replay ID of the current recording session
   ///
-  /// Returns the session ID when recording is active (initializing or recording),
-  /// null otherwise.
+  /// Returns the session ID when a session is active (initializing, recording,
+  /// or paused), null otherwise.
   String? get replayId {
     if (_recordingState == RecordingState.initializing ||
-        _recordingState == RecordingState.recording) {
+        _recordingState == RecordingState.recording ||
+        _recordingState == RecordingState.paused) {
       return _sessionManager.getCurrentSession().id;
     }
     return null;
@@ -504,6 +505,63 @@ class SessionReplayCoordinator implements WidgetCoordinator {
       // Stay in notRecording state - allows re-rolling on next startRecording() call
       // This matches iOS/Android SDK behavior
     }
+  }
+
+  /// Pause recording while keeping the current session alive
+  ///
+  /// Transitions from [RecordingState.recording] to [RecordingState.paused].
+  /// Screenshots and interactions stop being captured, but the session
+  /// metadata and replay ID are preserved. Auto-flush keeps running so
+  /// already-queued events continue to upload.
+  ///
+  /// No-op if the coordinator is not in the [RecordingState.recording] state.
+  /// Use [resumeRecording] to continue capturing into the same session.
+  void pauseRecording() {
+    if (_isDisposed) {
+      _logger.debug(
+        'Coordinator disposed, skipping pauseRecording',
+        tag: 'coordinator',
+      );
+      return;
+    }
+
+    if (_recordingState != RecordingState.recording) {
+      _logger.debug(
+        'pauseRecording ignored - not currently recording (state: $_recordingState)',
+        tag: 'coordinator',
+      );
+      return;
+    }
+
+    _logger.info('Session replay recording paused');
+    _recordingState = RecordingState.paused;
+  }
+
+  /// Resume recording into the currently paused session
+  ///
+  /// Transitions from [RecordingState.paused] back to
+  /// [RecordingState.recording]. The session ID and replay ID are unchanged.
+  ///
+  /// No-op if the coordinator is not in the [RecordingState.paused] state.
+  void resumeRecording() {
+    if (_isDisposed) {
+      _logger.debug(
+        'Coordinator disposed, skipping resumeRecording',
+        tag: 'coordinator',
+      );
+      return;
+    }
+
+    if (_recordingState != RecordingState.paused) {
+      _logger.debug(
+        'resumeRecording ignored - not currently paused (state: $_recordingState)',
+        tag: 'coordinator',
+      );
+      return;
+    }
+
+    _logger.info('Session replay recording resumed');
+    _recordingState = RecordingState.recording;
   }
 
   /// Stop recording session replay

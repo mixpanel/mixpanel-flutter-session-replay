@@ -293,6 +293,37 @@ class MixpanelSessionReplay {
     _coordinator.stopRecording();
   }
 
+  /// Pause the current recording without ending the session
+  ///
+  /// Use this before presenting a full-screen native component (e.g. a
+  /// native map view) that temporarily covers the Flutter UI. While paused,
+  /// screenshots and interactions are not captured, but the session — and
+  /// therefore its replay ID — is preserved. Call [resumeRecording] when
+  /// the native component is dismissed to continue capturing into the same
+  /// session.
+  ///
+  /// Has no effect if recording is not currently active.
+  ///
+  /// Example:
+  /// ```dart
+  /// sessionReplay.pauseRecording();
+  /// await openNativeMap();
+  /// sessionReplay.resumeRecording();
+  /// ```
+  void pauseRecording() {
+    _coordinator.pauseRecording();
+  }
+
+  /// Resume a previously paused recording
+  ///
+  /// Transitions the SDK from [RecordingState.paused] back to
+  /// [RecordingState.recording]. The session ID does not change.
+  ///
+  /// Has no effect if recording is not currently paused.
+  void resumeRecording() {
+    _coordinator.resumeRecording();
+  }
+
   /// Get the replay ID of the current recording session
   ///
   /// Returns the session's replay ID if recording is in progress, or null
@@ -308,6 +339,7 @@ class MixpanelSessionReplay {
   /// - [RecordingState.notRecording]: Not recording (initial state or after stop)
   /// - [RecordingState.initializing]: Sampling passed, setting up session
   /// - [RecordingState.recording]: Actively capturing screenshots and interactions
+  /// - [RecordingState.paused]: Session is preserved but capture is suspended
   ///
   /// Example:
   /// ```dart

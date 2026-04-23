@@ -318,9 +318,10 @@ void main() {
     );
 
     testWidgets(
-      'calls onAppBackgrounded when transitioning from resumed to inactive',
+      'does not call onAppBackgrounded when transitioning from resumed to inactive',
       (tester) async {
-        // GIVEN
+        // GIVEN - inactive is treated as visible to preserve the session
+        // during transient native overlays (maps, notification shade, ...).
         final fake = FakeWidgetCoordinator();
 
         await tester.pumpWidget(
@@ -342,12 +343,104 @@ void main() {
         );
         await tester.pump();
 
+        // THEN - inactive is above the visibility threshold, no background call
+        expect(fake.onAppBackgroundedCallCount, 0);
+      },
+    );
+
+    testWidgets(
+      'calls onAppBackgrounded when transitioning from resumed to hidden',
+      (tester) async {
+        // GIVEN
+        final fake = FakeWidgetCoordinator();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LifecycleObserver(coordinator: fake, child: const SizedBox()),
+          ),
+        );
+
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        expect(fake.onAppForegroundedCallCount, 1);
+
+        // WHEN
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        await tester.pump();
+
         // THEN
         expect(fake.onAppBackgroundedCallCount, 1);
       },
     );
 
-    testWidgets('calls onAppForegrounded when resuming from inactive', (
+    testWidgets(
+      'calls onAppBackgrounded when transitioning from inactive to paused',
+      (tester) async {
+        // GIVEN
+        final fake = FakeWidgetCoordinator();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LifecycleObserver(coordinator: fake, child: const SizedBox()),
+          ),
+        );
+
+        // resumed → inactive (still visible, no background)
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump();
+        expect(fake.onAppBackgroundedCallCount, 0);
+
+        // WHEN - inactive → paused (crosses the visibility threshold)
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pump();
+
+        // THEN
+        expect(fake.onAppBackgroundedCallCount, 1);
+      },
+    );
+
+    testWidgets(
+      'does not call onAppForegrounded when returning from inactive to resumed',
+      (tester) async {
+        // GIVEN - inactive is considered visible, so resuming from it is a no-op
+        final fake = FakeWidgetCoordinator();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: LifecycleObserver(coordinator: fake, child: const SizedBox()),
+          ),
+        );
+
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        await tester.pump();
+        expect(fake.onAppForegroundedCallCount, 1);
+
+        // WHEN
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+
+        // THEN
+        expect(fake.onAppForegroundedCallCount, 1);
+      },
+    );
+
+    testWidgets('calls onAppForegrounded when resuming from paused', (
       tester,
     ) async {
       // GIVEN
@@ -359,15 +452,14 @@ void main() {
         ),
       );
 
-      // Drive to resumed then inactive
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
       expect(fake.onAppForegroundedCallCount, 1);
       expect(fake.onAppBackgroundedCallCount, 1);
 
-      // WHEN - resume again
+      // WHEN
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
 
@@ -395,11 +487,12 @@ void main() {
       // WHEN - full background cycle
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       await tester.pump();
-      expect(fake.onAppBackgroundedCallCount, 1);
+      // inactive is still considered visible, no background call yet
+      expect(fake.onAppBackgroundedCallCount, 0);
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
-      // paused is less visible than inactive, so no additional background call
+      // crossing into paused triggers background
       expect(fake.onAppBackgroundedCallCount, 1);
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
@@ -410,7 +503,7 @@ void main() {
     testWidgets(
       'does not call onAppBackgrounded when going from paused to inactive',
       (tester) async {
-        // GIVEN - inactive is MORE visible than paused, so this is "coming up"
+        // GIVEN - paused -> inactive is "coming up" (towards visibility)
         final fake = FakeWidgetCoordinator();
 
         await tester.pumpWidget(
@@ -419,29 +512,22 @@ void main() {
           ),
         );
 
-        // Drive: resumed -> inactive -> paused
+        // Drive: resumed -> paused (background once)
         tester.binding.handleAppLifecycleStateChanged(
           AppLifecycleState.resumed,
         );
         await tester.pump();
-        tester.binding.handleAppLifecycleStateChanged(
-          AppLifecycleState.inactive,
-        );
-        await tester.pump();
         tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
         await tester.pump();
-        expect(
-          fake.onAppBackgroundedCallCount,
-          1,
-        ); // Only from resumed->inactive
+        expect(fake.onAppBackgroundedCallCount, 1);
 
-        // WHEN - paused -> inactive (going UP in visibility)
+        // WHEN - paused -> inactive
         tester.binding.handleAppLifecycleStateChanged(
           AppLifecycleState.inactive,
         );
         await tester.pump();
 
-        // THEN - no additional background call (inactive is more visible than paused)
+        // THEN - no additional background call
         expect(fake.onAppBackgroundedCallCount, 1);
       },
     );
@@ -456,12 +542,17 @@ void main() {
         ),
       );
 
+      // Establish a visible state so a subsequent transition to paused
+      // would background a live observer.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+
       // WHEN - dispose by replacing widget tree
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
 
       // THEN - lifecycle changes after disposal don't crash or trigger callbacks
       final callsBefore = fake.onAppBackgroundedCallCount;
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       await tester.pump();
       expect(fake.onAppBackgroundedCallCount, callsBefore);
     });

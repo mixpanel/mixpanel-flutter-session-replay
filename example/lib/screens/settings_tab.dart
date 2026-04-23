@@ -291,6 +291,8 @@ class _SettingsTabState extends State<SettingsTab> {
         return Colors.green;
       case RecordingState.initializing:
         return Colors.orange;
+      case RecordingState.paused:
+        return Colors.blueGrey;
       case RecordingState.notRecording:
         return Colors.grey;
     }

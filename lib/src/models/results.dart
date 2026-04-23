@@ -11,6 +11,12 @@ import 'masking_directive.dart';
 /// ```
 /// notRecording ──[sampling passes]──► initializing ──[DB done]──► recording
 ///      ▲                                                              │
+///      │                                              [pauseRecording]│
+///      │                                                              ▼
+///      │                                                           paused
+///      │                                                              │
+///      │                                             [resumeRecording]│
+///      │                                                              ▼
 ///      └──────────────────[stopRecording/background]──────────────────┘
 ///
 /// notRecording ──[sampling fails]──► notRecording (allows re-roll)
@@ -32,6 +38,14 @@ enum RecordingState {
   ///
   /// Screenshots and interactions are being captured and queued for upload.
   recording,
+
+  /// Recording is paused but the session is preserved
+  ///
+  /// Screenshots and interactions are not captured, but the current session
+  /// (and its replay ID) remains alive. Call `resumeRecording()` to continue
+  /// capturing into the same session. Intended for short-lived interruptions
+  /// such as opening a native component (e.g. a native map view).
+  paused,
 }
 
 /// Initialization errors that can occur during SDK setup
