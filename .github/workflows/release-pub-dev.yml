@@ -20,7 +20,7 @@ permissions:
 jobs:
   publish:
     name: "Publish ${{ github.ref_name }} to pub.dev"
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     environment: release
     timeout-minutes: 30
 
