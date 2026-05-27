@@ -9,6 +9,7 @@ import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_s
 import 'package:mixpanel_flutter_session_replay/src/internal/settings/settings_storage_provider.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
 import 'package:mixpanel_flutter_session_replay/src/models/configuration.dart';
+import 'package:mixpanel_flutter_session_replay/src/models/event_trigger.dart';
 
 import 'helpers/fake_http_client.dart';
 
@@ -451,6 +452,103 @@ void main() {
 
         // THEN
         expect(restored.recordSessionsPercent, 55.5);
+      });
+
+      group('recording_event_triggers', () {
+        test('parses event-name-keyed map of triggers from JSON', () {
+          // GIVEN
+          final json = {
+            'recording_event_triggers': {
+              'Login': {'percentage': 100.0},
+              'Purchase': {
+                'percentage': 50.0,
+                'property_filters': {
+                  '===': [
+                    {'var': '\$city'},
+                    'NYC',
+                  ],
+                },
+              },
+            },
+          };
+
+          // WHEN
+          final config = SdkConfig.fromJson(json);
+
+          // THEN
+          expect(config.recordingEventTriggers, isNotNull);
+          expect(config.recordingEventTriggers!.length, 2);
+          expect(config.recordingEventTriggers!['Login']!.percentage, 100.0);
+          expect(
+            config.recordingEventTriggers!['Login']!.propertyFilters,
+            isNull,
+          );
+          expect(config.recordingEventTriggers!['Purchase']!.percentage, 50.0);
+          expect(
+            config.recordingEventTriggers!['Purchase']!.propertyFilters,
+            isNotNull,
+          );
+        });
+
+        test('treats missing recording_event_triggers as null', () {
+          final config = SdkConfig.fromJson(const {
+            'record_sessions_percent': 100.0,
+          });
+          expect(config.recordingEventTriggers, isNull);
+        });
+
+        test('treats empty recording_event_triggers as null', () {
+          final config = SdkConfig.fromJson(const {
+            'recording_event_triggers': <String, dynamic>{},
+          });
+          expect(config.recordingEventTriggers, isNull);
+        });
+
+        test(
+          'round-trips a populated triggers map through toJson/fromJson',
+          () {
+            // GIVEN
+            final original = SdkConfig(
+              recordSessionsPercent: 25.0,
+              recordingEventTriggers: const {
+                'Login': EventTrigger(percentage: 100),
+                'Filtered': EventTrigger(
+                  percentage: 50,
+                  propertyFilters: {
+                    '===': [
+                      {'var': 'tier'},
+                      'premium',
+                    ],
+                  },
+                ),
+              },
+            );
+
+            // WHEN
+            final restored = SdkConfig.fromJson(original.toJson());
+
+            // THEN
+            expect(restored.recordSessionsPercent, 25.0);
+            expect(restored.recordingEventTriggers!.length, 2);
+            expect(
+              restored.recordingEventTriggers!['Login']!.percentage,
+              100.0,
+            );
+            expect(
+              restored.recordingEventTriggers!['Filtered']!.propertyFilters,
+              isNotNull,
+            );
+          },
+        );
+
+        test('coerces integer percentage to double', () {
+          final config = SdkConfig.fromJson(const {
+            'recording_event_triggers': {
+              'X': {'percentage': 75},
+            },
+          });
+          expect(config.recordingEventTriggers!['X']!.percentage, 75.0);
+        });
       });
     });
 

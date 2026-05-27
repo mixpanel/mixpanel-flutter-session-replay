@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mixpanel_flutter_session_replay/mixpanel_flutter_session_replay.dart';
 
+import '../services/mixpanel_analytics.dart';
 import '../utils/constants.dart';
 import '../widgets/test_screen_card.dart';
 
@@ -13,6 +14,25 @@ class DashboardTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        const Text(
+          'Event Triggers',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Track "onboarding_started"'),
+          onPressed: () {
+            MixpanelAnalytics.instance?.track('onboarding_started');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tracked: onboarding_started'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
         const Text(
           'Test Scenarios',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),

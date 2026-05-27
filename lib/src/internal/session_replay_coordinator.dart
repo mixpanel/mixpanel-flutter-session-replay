@@ -10,6 +10,7 @@ import '../models/results.dart';
 import 'background_task_manager.dart';
 import 'event_recorder.dart';
 import 'screenshot_capturer.dart';
+import 'triggers/trigger_service.dart';
 import 'upload/upload_service.dart';
 import 'settings/settings_service.dart';
 import 'session/session_manager.dart';
@@ -29,6 +30,10 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   final SessionManager _sessionManager;
   final BackgroundTaskManager _backgroundTaskManager;
   final MixpanelLogger _logger;
+  late final TriggerService _triggerService = TriggerService(
+    logger: _logger,
+    onTriggerFired: (pct) => startRecording(sessionsPercent: pct),
+  );
 
   RecordingState _recordingState = RecordingState.notRecording;
   bool _isAppInForeground = false;
@@ -89,6 +94,9 @@ class SessionReplayCoordinator implements WidgetCoordinator {
         'Session replay manual recording mode - call startRecording() to begin',
       );
     }
+    // Begin listening to the Mixpanel event bridge so server-configured
+    // Event Triggers can start recording when matching events fire.
+    _triggerService.start();
   }
 
   /// Current recording state
@@ -395,6 +403,10 @@ class SessionReplayCoordinator implements WidgetCoordinator {
 
   /// Applies individual remote config values to the coordinator.
   void _applyRemoteConfigValues(RemoteSettingsResult result) {
+    // Trigger updates are independent of recordSessionsPercent — apply first
+    // so an absent `record_sessions_percent` doesn't suppress trigger config.
+    _triggerService.updateTriggers(result.sdkConfig?.recordingEventTriggers);
+
     final percent = result.sdkConfig?.recordSessionsPercent;
     if (percent == null) return;
 
@@ -572,6 +584,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     await flush();
 
     // STEP 3: Dispose services (stops timers, closes database)
+    await _triggerService.dispose();
     _uploadService.dispose();
     _settingsService.dispose();
     await _eventRecorder.dispose(); // Closes database connection
