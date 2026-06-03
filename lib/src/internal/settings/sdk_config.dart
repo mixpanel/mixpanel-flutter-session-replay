@@ -24,13 +24,13 @@ class SdkConfig {
 
   static Map<String, EventTrigger>? _parseTriggers(Object? raw) {
     if (raw is! Map) return null;
-    final out = <String, EventTrigger>{};
+    final triggers = <String, EventTrigger>{};
     raw.forEach((key, value) {
       if (key is String && value is Map) {
-        out[key] = EventTrigger.fromJson(value.cast<String, dynamic>());
+        triggers[key] = EventTrigger.fromJson(value.cast<String, dynamic>());
       }
     });
-    return out.isEmpty ? null : out;
+    return triggers.isEmpty ? null : triggers;
   }
 
   Map<String, dynamic> toJson() => {

@@ -32,7 +32,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   final MixpanelLogger _logger;
   late final TriggerService _triggerService = TriggerService(
     logger: _logger,
-    onTriggerFired: (pct) => startRecording(sessionsPercent: pct),
+    onTriggerFired: (percentage) => startRecording(sessionsPercent: percentage),
   );
 
   RecordingState _recordingState = RecordingState.notRecording;

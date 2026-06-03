@@ -13,7 +13,7 @@ import 'event_trigger_evaluator.dart';
 /// percentage. The coordinator wires it to its own `startRecording`, which
 /// handles the sampling decision, double-start guards, and the
 /// remote-disabled check.
-class TriggerService {
+final class TriggerService {
   TriggerService({
     required MixpanelLogger logger,
     required void Function(double percentage) onTriggerFired,
@@ -42,7 +42,13 @@ class TriggerService {
   /// only the first call attaches a subscription.
   void start() {
     if (_isDisposed || _subscription != null) return;
-    _subscription = MixpanelEventBridge.events.listen(_onEvent);
+    _subscription = MixpanelEventBridge.events.listen(
+      _onEvent,
+      onError: (Object error, StackTrace stack) {
+        // Never let a bridge error crash the host app.
+        _logger.error('MixpanelEventBridge stream error', error, stack);
+      },
+    );
     _logger.info('Subscribed to MixpanelEventBridge.events', tag: 'triggers');
   }
 

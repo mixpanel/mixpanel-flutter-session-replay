@@ -6,7 +6,7 @@
 /// global `record_sessions_percent`); [propertyFilters] is an optional
 /// JSONLogic expression that must evaluate to true against the event's
 /// properties.
-class EventTrigger {
+final class EventTrigger {
   const EventTrigger({required this.percentage, this.propertyFilters});
 
   /// Sampling percentage (0–100). Invalid values cause the trigger to be

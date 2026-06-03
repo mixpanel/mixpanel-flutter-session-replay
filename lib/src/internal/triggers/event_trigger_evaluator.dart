@@ -6,7 +6,7 @@ import '../../models/event_trigger.dart';
 import '../logger.dart';
 
 /// Decides whether a tracked event should start session replay recording.
-class EventTriggerEvaluator {
+final class EventTriggerEvaluator {
   EventTriggerEvaluator(this._triggers, this._logger);
 
   final Map<String, EventTrigger> _triggers;
@@ -27,15 +27,16 @@ class EventTriggerEvaluator {
       return null;
     }
 
-    final pct = trigger.percentage;
-    if (pct.isNaN || pct < 0 || pct > 100) {
+    final percentage = trigger.percentage;
+    if (percentage.isNaN || percentage < 0 || percentage > 100) {
       _logger.warning(
-        "Invalid trigger percentage for '$eventName': $pct (expected 0-100)",
+        "Invalid trigger percentage for '$eventName': $percentage "
+        '(expected 0-100)',
         tag: 'triggers',
       );
       return null;
     }
-    return pct;
+    return percentage;
   }
 
   bool _passesPropertyFilters(
