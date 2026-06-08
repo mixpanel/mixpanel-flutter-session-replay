@@ -360,6 +360,52 @@ void main() {
       expect(isQueueDisposed(queue3), false);
     });
 
+    test('invalid serverUrl prevents initialization', () async {
+      // GIVEN
+      final queue = await createQueue('invalid-server-url-test');
+      final invalidOptions = SessionReplayOptions(
+        logLevel: LogLevel.none,
+        flushInterval: Duration(hours: 1),
+        serverUrl: 'http://insecure.example.com', // not https://
+      );
+
+      // WHEN
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'invalid-server-url-test',
+        distinctId: testDistinctId,
+        options: invalidOptions,
+        eventQueue: queue,
+      );
+
+      // THEN
+      expect(result.success, false);
+      expect(result.error, InitializationError.invalidServerUrl);
+      expect(result.errorMessage, contains('must start with https://'));
+    });
+
+    test('serverUrl with path is accepted (does not drop path)', () async {
+      // KEY behavior — matches Android, diverges from iOS. A proxy URL with
+      // a path component must not be rejected during initialization.
+      // GIVEN
+      final queue = await createQueue('server-url-with-path-test');
+      final options = SessionReplayOptions(
+        logLevel: LogLevel.none,
+        flushInterval: Duration(hours: 1),
+        serverUrl: 'https://proxy.example.com/mp',
+      );
+
+      // WHEN
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'server-url-with-path-test',
+        distinctId: testDistinctId,
+        options: options,
+        eventQueue: queue,
+      );
+
+      // THEN
+      expect(result.success, true);
+    });
+
     test('invalid storageQuotaMB prevents initialization', () async {
       // GIVEN
       final queue = await createQueue('storage-quota-test');

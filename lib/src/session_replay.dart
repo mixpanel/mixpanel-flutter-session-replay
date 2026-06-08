@@ -7,6 +7,7 @@ import 'models/debug_overlay_colors.dart';
 import 'models/results.dart';
 import 'models/masking_directive.dart';
 import 'session_replay_options.dart';
+import 'internal/endpoints.dart';
 import 'internal/native_image_compressor.dart';
 import 'internal/screenshot_capturer.dart';
 import 'internal/event_recorder.dart';
@@ -126,6 +127,25 @@ class MixpanelSessionReplay {
         );
       }
 
+      // Validate serverUrl. Matches Android: trim whitespace, require
+      // https://, require a parseable absolute URL with a host. Paths on the
+      // base URL are preserved (not rejected) so proxy URLs like
+      // `https://proxy.example.com/mp` are valid.
+      final serverUrlValidation = validateServerUrl(options.serverUrl);
+      final String resolvedServerUrl;
+      switch (serverUrlValidation) {
+        case ServerUrlValid(:final trimmedUrl):
+          resolvedServerUrl = trimmedUrl;
+        case ServerUrlInvalid(:final message):
+          logger.error(
+            'Invalid serverUrl, Session Replay is disabled: $message',
+          );
+          return InitializationResult.failure(
+            InitializationError.invalidServerUrl,
+            message,
+          );
+      }
+
       // Enforce App Sandbox on macOS — screenshots are stored locally and must
       // be protected from other processes reading them.
       // Skip when eventQueue is injected (unit tests don't store real screenshots).
@@ -218,6 +238,7 @@ class MixpanelSessionReplay {
         logger: logger,
         httpClient: sharedHttpClient,
         storageProvider: storageProvider,
+        serverUrl: resolvedServerUrl,
       );
 
       // Create upload service with payload serializer
@@ -230,6 +251,7 @@ class MixpanelSessionReplay {
         flushInterval: options.flushInterval,
         logger: logger,
         httpClient: sharedHttpClient,
+        serverUrl: resolvedServerUrl,
       );
 
       logger.debug('Internal components created');
