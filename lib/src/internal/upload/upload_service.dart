@@ -5,6 +5,7 @@ import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 
+import '../endpoints.dart';
 import '../storage/event_queue_interface.dart';
 import 'payload_serializer.dart';
 import '../settings/settings_service.dart';
@@ -70,8 +71,8 @@ class UploadService {
   /// Whether this service has been disposed
   bool _isDisposed = false;
 
-  /// Base upload endpoint
-  static const String _endpoint = 'https://api-js.mixpanel.com/record/';
+  /// Full `/record` endpoint, derived from the configured base URL.
+  final String _endpoint;
 
   /// Minimum backoff delay (60 seconds)
   static const Duration _minBackoff = Duration(seconds: 60);
@@ -105,6 +106,7 @@ class UploadService {
     this.maxEventsPerBatch = defaultMaxEventsPerBatch,
     http.Client? httpClient,
     Connectivity? connectivity,
+    String serverUrl = EndPoints.defaultBaseUrl,
   }) : flushInterval = flushInterval <= Duration.zero
            ? Duration.zero
            : flushInterval < const Duration(seconds: 1)
@@ -112,7 +114,8 @@ class UploadService {
            : flushInterval,
        _logger = logger,
        _httpClient = httpClient ?? http.Client(),
-       _connectivity = connectivity ?? Connectivity();
+       _connectivity = connectivity ?? Connectivity(),
+       _endpoint = EndPoints.record(serverUrl);
 
   /// Start automatic flushing on an interval
   ///

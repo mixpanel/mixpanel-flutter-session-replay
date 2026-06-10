@@ -490,5 +490,62 @@ void main() {
       expect(uri.queryParameters['\$lib_version'], endsWith('-flutter'));
       expect(uri.queryParameters['\$os'], anyOf('Android', 'iOS', 'Mac OS X'));
     });
+
+    test('uses custom serverUrl when configured', () async {
+      // GIVEN
+      final recorder = createRecordingHttpClient(
+        statusCode: 200,
+        body: jsonEncode({
+          'recording': {'is_enabled': true},
+        }),
+      );
+
+      final service = SettingsService(
+        storageProvider: storageProvider,
+        token: testToken,
+        logger: MixpanelLogger(LogLevel.none),
+        httpClient: recorder.client,
+        serverUrl: 'https://api-eu.mixpanel.com',
+      );
+
+      // WHEN
+      await service.checkRecordingEnabled();
+
+      // THEN
+      final uri = recorder.requests.single.url;
+      expect(uri.host, 'api-eu.mixpanel.com');
+      expect(uri.path, '/settings');
+    });
+
+    test(
+      'preserves a path on the serverUrl when building the settings endpoint',
+      () async {
+        // KEY behavior — matches Android, diverges from iOS. The settings call
+        // must hit `<base>/<path>/settings`, not have the path dropped.
+        // GIVEN
+        final recorder = createRecordingHttpClient(
+          statusCode: 200,
+          body: jsonEncode({
+            'recording': {'is_enabled': true},
+          }),
+        );
+
+        final service = SettingsService(
+          storageProvider: storageProvider,
+          token: testToken,
+          logger: MixpanelLogger(LogLevel.none),
+          httpClient: recorder.client,
+          serverUrl: 'https://proxy.example.com/mp',
+        );
+
+        // WHEN
+        await service.checkRecordingEnabled();
+
+        // THEN
+        final uri = recorder.requests.single.url;
+        expect(uri.host, 'proxy.example.com');
+        expect(uri.path, '/mp/settings');
+      },
+    );
   });
 }

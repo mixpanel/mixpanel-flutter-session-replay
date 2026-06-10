@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../version.dart';
+import '../endpoints.dart';
 import '../logger.dart';
 import 'remote_settings_result.dart';
 import 'remote_enablement_state.dart';
@@ -27,8 +28,8 @@ class SettingsService {
   final http.Client _httpClient;
   final SettingsStorageProvider _storageProvider;
 
-  /// Settings endpoint
-  static const String _endpoint = 'https://api.mixpanel.com/settings';
+  /// Full `/settings` endpoint, derived from the configured base URL.
+  final String _endpoint;
 
   /// Request timeout (5 seconds, matching iOS/Android)
   static const Duration _timeout = Duration(seconds: 5);
@@ -55,10 +56,12 @@ class SettingsService {
     required MixpanelLogger logger,
     required SettingsStorageProvider storageProvider,
     required http.Client httpClient,
+    String serverUrl = EndPoints.defaultBaseUrl,
   }) : _token = token,
        _logger = logger,
        _httpClient = httpClient,
-       _storageProvider = storageProvider;
+       _storageProvider = storageProvider,
+       _endpoint = EndPoints.settings(serverUrl);
 
   /// Fetch remote settings including recording status and SDK config.
   ///
