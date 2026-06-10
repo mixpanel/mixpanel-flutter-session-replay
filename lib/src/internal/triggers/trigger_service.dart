@@ -1,3 +1,7 @@
+// MixpanelEventBridge.events is @internal but explicitly reserved for
+// Mixpanel-authored downstream packages like this one.
+// ignore_for_file: invalid_use_of_internal_member
+
 import 'dart:async';
 
 import 'package:mixpanel_flutter_common/mixpanel_flutter_common.dart';

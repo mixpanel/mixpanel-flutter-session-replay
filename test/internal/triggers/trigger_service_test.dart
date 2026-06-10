@@ -1,3 +1,8 @@
+// Tests drive MixpanelEventBridge.notifyListeners directly to simulate
+// upstream events. The member is @internal but reserved for Mixpanel-authored
+// downstream packages like this one.
+// ignore_for_file: invalid_use_of_internal_member
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mixpanel_flutter_common/mixpanel_flutter_common.dart';
 import 'package:mixpanel_flutter_session_replay/src/internal/logger.dart';
