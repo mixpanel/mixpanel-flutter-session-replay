@@ -10,8 +10,14 @@ import '../../models/event_trigger.dart';
 import '../logger.dart';
 import 'event_trigger_evaluator.dart';
 
-/// Subscribes to [MixpanelEventBridge.events] and fires a callback when a
-/// tracked event matches a server-configured Event Trigger.
+/// Subscribes to [MixpanelEventBridge.events] when triggers are configured
+/// and fires a callback when a tracked event matches a server-configured
+/// Event Trigger.
+///
+/// Lifecycle is implicit in [updateTriggers]: a non-empty trigger map
+/// activates the bridge subscription, a null/empty map cancels it. This
+/// matches the native Android/iOS pattern where the upstream event
+/// collection only runs while triggers exist.
 ///
 /// The callback (`onTriggerFired`) is invoked with the trigger's sampling
 /// percentage. The coordinator wires it to its own `startRecording`, which
@@ -32,28 +38,47 @@ final class TriggerService {
   StreamSubscription<MixpanelEvent>? _subscription;
   bool _isDisposed = false;
 
-  /// Replace the active trigger set. Called by the coordinator after settings
-  /// load (and on any future refresh). Passing `null` clears all triggers.
+  /// Replace the active trigger set. A non-empty map activates the bridge
+  /// subscription; a null/empty map cancels it. Safe to call repeatedly.
   void updateTriggers(Map<String, EventTrigger>? triggers) {
+    if (_isDisposed) return;
     _evaluator = EventTriggerEvaluator(triggers ?? const {}, _logger);
     _logger.debug(
       'Updated triggers (${triggers?.length ?? 0} active)',
       tag: 'triggers',
     );
+    if (triggers != null && triggers.isNotEmpty) {
+      _ensureSubscribed();
+    } else {
+      _cancelSubscription();
+    }
   }
 
-  /// Begin listening to the Mixpanel event bridge. Safe to call repeatedly;
-  /// only the first call attaches a subscription.
-  void start() {
-    if (_isDisposed || _subscription != null) return;
+  void _ensureSubscribed() {
+    if (_subscription != null) return;
     _subscription = MixpanelEventBridge.events.listen(
       _onEvent,
       onError: (Object error, StackTrace stack) {
         // Never let a bridge error crash the host app.
-        _logger.error('MixpanelEventBridge stream error', error, stack);
+        _logger.error(
+          'MixpanelEventBridge stream error',
+          error,
+          stack,
+          'triggers',
+        );
       },
     );
     _logger.info('Subscribed to MixpanelEventBridge.events', tag: 'triggers');
+  }
+
+  void _cancelSubscription() {
+    if (_subscription == null) return;
+    _subscription!.cancel();
+    _subscription = null;
+    _logger.info(
+      'Unsubscribed from MixpanelEventBridge.events',
+      tag: 'triggers',
+    );
   }
 
   void _onEvent(MixpanelEvent event) {
@@ -61,18 +86,12 @@ final class TriggerService {
       event.eventName,
       event.properties,
     );
-    if (percentage != null) {
-      _logger.info(
-        "Trigger fired for '${event.eventName}' at $percentage%",
-        tag: 'triggers',
-      );
-      _onTriggerFired(percentage);
-    } else {
-      _logger.debug(
-        "Event '${event.eventName}' did not match any active trigger",
-        tag: 'triggers',
-      );
-    }
+    if (percentage == null) return;
+    _logger.info(
+      "Trigger fired for '${event.eventName}' at $percentage%",
+      tag: 'triggers',
+    );
+    _onTriggerFired(percentage);
   }
 
   Future<void> dispose() async {

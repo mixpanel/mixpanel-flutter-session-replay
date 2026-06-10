@@ -25,8 +25,17 @@ void main() {
     await service.dispose();
   });
 
-  test('does not fire before start() is called', () async {
-    service.updateTriggers({'Login': const EventTrigger(percentage: 100)});
+  test('does not fire when triggers map is null', () async {
+    // updateTriggers(null) cancels any subscription; events are ignored.
+    service.updateTriggers(null);
+    MixpanelEventBridge.notifyListeners(eventName: 'Login');
+    await Future<void>.delayed(Duration.zero);
+    expect(fired, isEmpty);
+  });
+
+  test('does not fire when triggers map is empty', () async {
+    // updateTriggers({}) cancels any subscription; events are ignored.
+    service.updateTriggers(const {});
     MixpanelEventBridge.notifyListeners(eventName: 'Login');
     await Future<void>.delayed(Duration.zero);
     expect(fired, isEmpty);
@@ -34,7 +43,6 @@ void main() {
 
   test('fires callback with trigger percentage when event matches', () async {
     service.updateTriggers({'Login': const EventTrigger(percentage: 42)});
-    service.start();
     MixpanelEventBridge.notifyListeners(eventName: 'Login');
     await Future<void>.delayed(Duration.zero);
     expect(fired, [42]);
@@ -42,26 +50,26 @@ void main() {
 
   test('does not fire when event name has no registered trigger', () async {
     service.updateTriggers({'Login': const EventTrigger(percentage: 100)});
-    service.start();
     MixpanelEventBridge.notifyListeners(eventName: 'Logout');
     await Future<void>.delayed(Duration.zero);
     expect(fired, isEmpty);
   });
 
-  test('updateTriggers(null) clears all triggers', () async {
-    service.updateTriggers({'Login': const EventTrigger(percentage: 100)});
-    service.start();
-    service.updateTriggers(null);
-    MixpanelEventBridge.notifyListeners(eventName: 'Login');
-    await Future<void>.delayed(Duration.zero);
-    expect(fired, isEmpty);
-  });
+  test(
+    'updateTriggers(null) clears all triggers and cancels subscription',
+    () async {
+      service.updateTriggers({'Login': const EventTrigger(percentage: 100)});
+      service.updateTriggers(null);
+      MixpanelEventBridge.notifyListeners(eventName: 'Login');
+      await Future<void>.delayed(Duration.zero);
+      expect(fired, isEmpty);
+    },
+  );
 
   test(
     'updateTriggers swaps the active trigger set without resubscribing',
     () async {
       service.updateTriggers({'A': const EventTrigger(percentage: 10)});
-      service.start();
 
       MixpanelEventBridge.notifyListeners(eventName: 'A');
       await Future<void>.delayed(Duration.zero);
@@ -78,12 +86,11 @@ void main() {
   );
 
   test(
-    'start() is idempotent (does not create duplicate subscriptions)',
+    'updateTriggers is idempotent (does not create duplicate subscriptions)',
     () async {
       service.updateTriggers({'Once': const EventTrigger(percentage: 1)});
-      service.start();
-      service.start();
-      service.start();
+      service.updateTriggers({'Once': const EventTrigger(percentage: 1)});
+      service.updateTriggers({'Once': const EventTrigger(percentage: 1)});
 
       MixpanelEventBridge.notifyListeners(eventName: 'Once');
       await Future<void>.delayed(Duration.zero);
@@ -92,10 +99,33 @@ void main() {
     },
   );
 
+  test(
+    'subscription is re-activated after going empty then non-empty',
+    () async {
+      service.updateTriggers({'A': const EventTrigger(percentage: 50)});
+      service.updateTriggers(null); // cancel
+      service.updateTriggers({
+        'A': const EventTrigger(percentage: 75),
+      }); // re-activate
+
+      MixpanelEventBridge.notifyListeners(eventName: 'A');
+      await Future<void>.delayed(Duration.zero);
+      expect(fired, [75]);
+    },
+  );
+
   test('after dispose(), no further callbacks fire', () async {
     service.updateTriggers({'X': const EventTrigger(percentage: 100)});
-    service.start();
     await service.dispose();
+
+    MixpanelEventBridge.notifyListeners(eventName: 'X');
+    await Future<void>.delayed(Duration.zero);
+    expect(fired, isEmpty);
+  });
+
+  test('updateTriggers after dispose is a no-op', () async {
+    await service.dispose();
+    service.updateTriggers({'X': const EventTrigger(percentage: 100)});
 
     MixpanelEventBridge.notifyListeners(eventName: 'X');
     await Future<void>.delayed(Duration.zero);
@@ -114,7 +144,6 @@ void main() {
         },
       ),
     });
-    service.start();
 
     MixpanelEventBridge.notifyListeners(
       eventName: 'Purchase',

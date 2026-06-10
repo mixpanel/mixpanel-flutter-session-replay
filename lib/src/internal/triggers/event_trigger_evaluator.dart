@@ -49,7 +49,7 @@ final class EventTriggerEvaluator {
       return result is bool && result;
     } catch (e, stack) {
       // Fail closed: any parse or evaluation error means don't record.
-      _logger.error('JSONLogic evaluation failed', e, stack);
+      _logger.error('JSONLogic evaluation failed', e, stack, 'triggers');
       return false;
     }
   }
