@@ -44,6 +44,9 @@ enum InitializationError {
 
   /// Platform security requirements not met (e.g., macOS App Sandbox not enabled)
   platformSecurityNotMet,
+
+  /// `serverUrl` was empty, not HTTPS, or otherwise malformed.
+  invalidServerUrl,
 }
 
 /// Capture errors (fail-safe - no unmasked data sent)
