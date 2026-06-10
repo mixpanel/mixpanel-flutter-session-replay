@@ -61,8 +61,8 @@ void main() {
     final request = uploadRequests.first;
 
     // Verify URL and query params
-    expect(request.url.host, 'api-js.mixpanel.com');
-    expect(request.url.path, '/record/');
+    expect(request.url.host, 'api.mixpanel.com');
+    expect(request.url.path, '/record');
     expect(request.url.queryParameters['format'], 'gzip');
     expect(request.url.queryParameters['distinct_id'], 'user-integration');
     expect(request.url.queryParameters['seq'], isNotNull);

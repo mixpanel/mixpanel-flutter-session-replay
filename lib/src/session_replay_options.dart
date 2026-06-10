@@ -1,4 +1,5 @@
 import 'models/configuration.dart';
+import 'models/data_residency.dart';
 import 'models/debug_overlay_colors.dart';
 
 /// Configuration options for Mixpanel Session Replay
@@ -27,6 +28,7 @@ class SessionReplayOptions {
     this.logLevel = LogLevel.none,
     this.platformOptions = const PlatformOptions(),
     this.debugOptions,
+    this.serverUrl = DataResidency.us,
   }) : assert(
          autoRecordSessionsPercent >= 0 && autoRecordSessionsPercent <= 100,
          'autoRecordSessionsPercent must be between 0 and 100',
@@ -77,4 +79,21 @@ class SessionReplayOptions {
   /// debugOptions: null // All debug features disabled
   /// ```
   final DebugOptions? debugOptions;
+
+  /// Base server URL for sending session replay data and fetching settings.
+  ///
+  /// Defaults to [DataResidency.us]. Use the [DataResidency] constants for
+  /// the supported regions, or supply a custom HTTPS URL (e.g. a proxy).
+  ///
+  /// The URL is validated during [MixpanelSessionReplay.initialize]; whitespace
+  /// is trimmed and the URL must start with `https://`. Any path component on
+  /// the base URL is preserved when building the `/record` and `/settings`
+  /// endpoints, so a proxy URL such as `https://proxy.example.com/mp` resolves
+  /// to `https://proxy.example.com/mp/record`.
+  ///
+  /// Example:
+  /// ```dart
+  /// SessionReplayOptions(serverUrl: DataResidency.eu)
+  /// ```
+  final String serverUrl;
 }

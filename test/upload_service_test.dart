@@ -80,6 +80,7 @@ void main() {
       dynamic httpClient,
       int? maxPayloadBytes,
       int? maxEventsPerBatch,
+      String? serverUrl,
     }) {
       return UploadService(
         eventQueue: eventQueue,
@@ -97,6 +98,7 @@ void main() {
         connectivity: connectivity != null
             ? FakeConnectivity(connectivity)
             : null,
+        serverUrl: serverUrl ?? 'https://api.mixpanel.com',
       );
     }
 
@@ -602,10 +604,10 @@ void main() {
     });
 
     group('upload behavior', () {
-      test('sends POST request to correct endpoint', () async {
+      test('sends POST request to default US record endpoint', () async {
         // GIVEN
-        final expectedEndpoint = 'api-js.mixpanel.com';
-        final expectedPath = '/record/';
+        final expectedEndpoint = 'api.mixpanel.com';
+        final expectedPath = '/record';
         await seedQueue();
 
         final recorder = createRecordingHttpClient(statusCode: 200);
@@ -623,6 +625,49 @@ void main() {
         expect(request.url.host, expectedEndpoint);
         expect(request.url.path, expectedPath);
       });
+
+      test('sends POST request to custom serverUrl record endpoint', () async {
+        // GIVEN
+        await seedQueue();
+        final recorder = createRecordingHttpClient(statusCode: 200);
+        final service = createService(
+          eventQueue: eventQueue,
+          httpClient: recorder.client,
+          serverUrl: 'https://api-eu.mixpanel.com',
+        );
+
+        // WHEN
+        await service.flush();
+
+        // THEN
+        final request = recorder.requests.first;
+        expect(request.url.host, 'api-eu.mixpanel.com');
+        expect(request.url.path, '/record');
+      });
+
+      test(
+        'preserves a path on the serverUrl when building the record endpoint',
+        () async {
+          // KEY behavior — matches Android, diverges from iOS. Proxy URLs with
+          // a path must hit `<base>/<path>/record`, not have the path dropped.
+          // GIVEN
+          await seedQueue();
+          final recorder = createRecordingHttpClient(statusCode: 200);
+          final service = createService(
+            eventQueue: eventQueue,
+            httpClient: recorder.client,
+            serverUrl: 'https://proxy.example.com/mp',
+          );
+
+          // WHEN
+          await service.flush();
+
+          // THEN
+          final request = recorder.requests.first;
+          expect(request.url.host, 'proxy.example.com');
+          expect(request.url.path, '/mp/record');
+        },
+      );
 
       test('includes correct query parameters', () async {
         // GIVEN
