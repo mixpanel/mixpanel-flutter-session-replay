@@ -17,18 +17,7 @@ dependencies:
   provider: ^6.0.0
   path_provider: ^2.1.0
   image: ^4.3.0
-  mixpanel_flutter: ^2.5.0
-
-# Override mixpanel_flutter to the local checkout that carries the
-# MixpanelEventBridge subscriber (forwards native track() events into Dart so
-# session_replay's TriggerService can evaluate them). Also pin
-# mixpanel_flutter_common to the same path so both packages resolve to the
-# same singleton bridge instance.
-dependency_overrides:
-  mixpanel_flutter:
-    path: ../../mixpanel-flutter/packages/mixpanel_flutter
-  mixpanel_flutter_common:
-    path: ../../mixpanel-flutter/packages/mixpanel_flutter_common
+  mixpanel_flutter: ^2.9.0
 
 dev_dependencies:
   flutter_test:
