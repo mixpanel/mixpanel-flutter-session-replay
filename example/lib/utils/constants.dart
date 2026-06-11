@@ -10,4 +10,5 @@ class AppRoutes {
   static const String rapidScroll = '/test/rapid-scroll';
   static const String platformWidgets = '/test/platform-widgets';
   static const String security = '/test/security';
+  static const String eventTriggers = '/test/event-triggers';
 }
