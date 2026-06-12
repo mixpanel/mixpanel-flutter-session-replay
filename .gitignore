@@ -16,9 +16,6 @@
 .fvm/
 .fvmrc
 
-# DevTools
-devtools_options.yaml
-
 # Flutter/Dart/Pub
 /pubspec.lock
 **/doc/api/
