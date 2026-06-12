@@ -10,6 +10,7 @@ import '../models/results.dart';
 import 'background_task_manager.dart';
 import 'event_recorder.dart';
 import 'screenshot_capturer.dart';
+import 'triggers/trigger_service.dart';
 import 'upload/upload_service.dart';
 import 'settings/settings_service.dart';
 import 'session/session_manager.dart';
@@ -29,6 +30,22 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   final SessionManager _sessionManager;
   final BackgroundTaskManager _backgroundTaskManager;
   final MixpanelLogger _logger;
+  late final TriggerService _triggerService = TriggerService(
+    logger: _logger,
+    onTriggerFired: (percentage) {
+      // Match native: explicitly log when a trigger matches but a session
+      // is already in progress, so the "Trigger fired" log isn't followed
+      // by a silent no-op inside startRecording.
+      if (_recordingState != RecordingState.notRecording) {
+        _logger.debug(
+          'Trigger matched but recording already in progress, skipping start',
+          tag: 'triggers',
+        );
+        return;
+      }
+      startRecording(sessionsPercent: percentage);
+    },
+  );
 
   RecordingState _recordingState = RecordingState.notRecording;
   bool _isAppInForeground = false;
@@ -109,6 +126,20 @@ class SessionReplayCoordinator implements WidgetCoordinator {
 
   /// Debug options configuration (null = debug disabled)
   DebugOptions? get debugOptions => _debugOptions;
+
+  /// Whether the SDK is allowed to evaluate tracked events against
+  /// Event Triggers. Reflects the user-controlled toggle only — does
+  /// not imply any triggers are actually configured or being evaluated.
+  bool get isEventTriggersEnabled => _triggerService.isEnabled;
+
+  /// Opt out of trigger evaluation. Matched events stop firing recording.
+  /// No-op when no triggers are configured.
+  void disableEventTriggers() => _triggerService.disable();
+
+  /// Opt back in to trigger evaluation. Enabled by default at SDK init.
+  /// Does not cause triggers to be evaluated unless remote settings has
+  /// delivered any.
+  void enableEventTriggers() => _triggerService.enable();
 
   /// Get the replay ID of the current recording session
   ///
@@ -393,8 +424,19 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     }
   }
 
-  /// Applies individual remote config values to the coordinator.
+  /// Applies remote config values to the coordinator.
+  ///
+  /// Only called from modes that opt in to remote config (strict + fresh,
+  /// fallback). In [RemoteSettingsMode.disabled] and strict-with-cache-miss,
+  /// this is skipped — so no remote config (including triggers) takes
+  /// effect, while the remote enablement switch is still honored via the always-on
+  /// `/settings` fetch.
   void _applyRemoteConfigValues(RemoteSettingsResult result) {
+    _triggerService.updateTriggers(result.sdkConfig?.recordingEventTriggers);
+    _applyRecordSessionsPercent(result);
+  }
+
+  void _applyRecordSessionsPercent(RemoteSettingsResult result) {
     final percent = result.sdkConfig?.recordSessionsPercent;
     if (percent == null) return;
 
@@ -578,6 +620,7 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     await flush();
 
     // STEP 3: Dispose services (stops timers, closes database)
+    await _triggerService.dispose();
     _uploadService.dispose();
     _settingsService.dispose();
     await _eventRecorder.dispose(); // Closes database connection

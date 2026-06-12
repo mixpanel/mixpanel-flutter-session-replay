@@ -19,6 +19,13 @@ class DashboardTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         TestScreenCard(
+          title: 'Event Triggers',
+          description:
+              'Fire test events with bool / int / string / mixed properties',
+          icon: Icons.bolt,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.eventTriggers),
+        ),
+        TestScreenCard(
           title: 'Mixed Content',
           description:
               'JSON-driven test with text, images, and nested containers',

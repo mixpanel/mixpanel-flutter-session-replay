@@ -478,6 +478,86 @@ void main() {
       expect(result.instance!.recordingState, RecordingState.notRecording);
     });
 
+    test('isEventTriggersEnabled defaults to true', () async {
+      // GIVEN
+      final queue = await createQueue('triggers-default');
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'triggers-default',
+        distinctId: testDistinctId,
+        options: testOptions,
+        eventQueue: queue,
+      );
+      expect(result.success, true);
+
+      // THEN — matches Android/iOS: default-enabled at SDK init
+      expect(result.instance!.isEventTriggersEnabled, isTrue);
+    });
+
+    test('disableEventTriggers flips the flag to false', () async {
+      // GIVEN
+      final queue = await createQueue('triggers-disable');
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'triggers-disable',
+        distinctId: testDistinctId,
+        options: testOptions,
+        eventQueue: queue,
+      );
+      expect(result.success, true);
+      expect(result.instance!.isEventTriggersEnabled, isTrue);
+
+      // WHEN
+      result.instance!.disableEventTriggers();
+
+      // THEN
+      expect(result.instance!.isEventTriggersEnabled, isFalse);
+    });
+
+    test('enableEventTriggers restores the flag to true', () async {
+      // GIVEN
+      final queue = await createQueue('triggers-enable');
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'triggers-enable',
+        distinctId: testDistinctId,
+        options: testOptions,
+        eventQueue: queue,
+      );
+      expect(result.success, true);
+      result.instance!.disableEventTriggers();
+      expect(result.instance!.isEventTriggersEnabled, isFalse);
+
+      // WHEN
+      result.instance!.enableEventTriggers();
+
+      // THEN
+      expect(result.instance!.isEventTriggersEnabled, isTrue);
+    });
+
+    test('enable/disable toggles repeatedly', () async {
+      // GIVEN
+      final queue = await createQueue('triggers-toggle');
+      final result = await MixpanelSessionReplay.initializeWithDependencies(
+        token: 'triggers-toggle',
+        distinctId: testDistinctId,
+        options: testOptions,
+        eventQueue: queue,
+      );
+      expect(result.success, true);
+      final sdk = result.instance!;
+
+      // WHEN / THEN
+      expect(sdk.isEventTriggersEnabled, isTrue);
+      sdk.disableEventTriggers();
+      expect(sdk.isEventTriggersEnabled, isFalse);
+      sdk.disableEventTriggers(); // idempotent
+      expect(sdk.isEventTriggersEnabled, isFalse);
+      sdk.enableEventTriggers();
+      expect(sdk.isEventTriggersEnabled, isTrue);
+      sdk.enableEventTriggers(); // idempotent
+      expect(sdk.isEventTriggersEnabled, isTrue);
+      sdk.disableEventTriggers();
+      expect(sdk.isEventTriggersEnabled, isFalse);
+    });
+
     test('coordinator getter returns the internal coordinator', () async {
       // GIVEN
       final queue = await createQueue('coordinator-test');

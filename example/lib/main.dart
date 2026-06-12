@@ -7,6 +7,7 @@ import 'models/log_model.dart';
 import 'screens/config_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/test_screens/animations_screen.dart';
+import 'screens/test_screens/event_triggers_screen.dart';
 import 'screens/test_screens/image_gallery_screen.dart';
 import 'screens/test_screens/mixed_content_screen.dart';
 import 'screens/test_screens/platform_widgets_screen.dart';
@@ -90,6 +91,7 @@ class MyApp extends StatelessWidget {
       AppRoutes.rapidScroll: (_) => const RapidScrollScreen(),
       AppRoutes.platformWidgets: (_) => const PlatformWidgetsScreen(),
       AppRoutes.security: (_) => const SecurityTestScreen(),
+      AppRoutes.eventTriggers: (_) => const EventTriggersScreen(),
     };
 
     final builder = routes[settings.name];
