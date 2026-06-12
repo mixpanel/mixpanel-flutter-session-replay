@@ -528,6 +528,12 @@ class SessionReplayCoordinator implements WidgetCoordinator {
     // Transition to notRecording state
     _recordingState = RecordingState.notRecording;
 
+    // Clear debug overlay regions — no captures are happening, so the
+    // previously-rendered mask outlines should disappear immediately.
+    if (_maskRegions.value.isNotEmpty) {
+      _maskRegions.value = const <MaskRegionInfo>[];
+    }
+
     // Stop automatic uploads
     _uploadService.stopAutoFlush();
 
