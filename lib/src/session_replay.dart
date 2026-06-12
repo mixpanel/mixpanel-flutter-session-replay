@@ -339,6 +339,47 @@ class MixpanelSessionReplay {
   /// ```
   RecordingState get recordingState => _coordinator.recordingState;
 
+  /// Whether the SDK is allowed to evaluate tracked events against
+  /// Event Triggers.
+  ///
+  /// Reflects the user-controlled toggle set via [enableEventTriggers] /
+  /// [disableEventTriggers]; defaults to `true` on SDK initialization.
+  ///
+  /// `true` means "not opted out" — it does NOT imply triggers are
+  /// actually being evaluated. Evaluation additionally requires:
+  /// - Remote settings to be enabled (see
+  ///   [SessionReplayOptions.remoteSettingsMode]), and
+  /// - The remote settings response to include one or more Event Triggers.
+  ///
+  /// When `false`, any tracked events that would otherwise match a
+  /// configured Event Trigger are ignored.
+  bool get isEventTriggersEnabled => _coordinator.isEventTriggersEnabled;
+
+  /// Opt out of evaluating tracked events against Event Triggers.
+  ///
+  /// While opted out, the SDK ignores tracked events that would otherwise
+  /// match a server-configured Event Trigger and start a recording. This
+  /// is a no-op in cases where no triggers would be evaluated anyway —
+  /// for example, when [SessionReplayOptions.remoteSettingsMode] is
+  /// [RemoteSettingsMode.disabled], or when the remote settings response
+  /// contained no Event Triggers.
+  ///
+  /// Does not affect:
+  /// - Manual recording via [startRecording] / [stopRecording]
+  /// - Auto-record on app foreground
+  /// - Remote settings parsing or trigger configuration delivery
+  ///
+  /// Resets to enabled on SDK re-initialization.
+  void disableEventTriggers() => _coordinator.disableEventTriggers();
+
+  /// Opt back in to evaluating tracked events against Event Triggers
+  /// (the default at SDK initialization).
+  ///
+  /// Calling this does not by itself cause any triggers to be evaluated:
+  /// that still requires remote settings to be enabled and the settings
+  /// response to include one or more Event Triggers.
+  void enableEventTriggers() => _coordinator.enableEventTriggers();
+
   /// Get current distinct ID
   String get distinctId => _distinctId;
 

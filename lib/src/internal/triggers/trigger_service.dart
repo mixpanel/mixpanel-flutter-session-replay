@@ -37,6 +37,25 @@ final class TriggerService {
   EventTriggerEvaluator _evaluator;
   StreamSubscription<MixpanelEvent>? _subscription;
   bool _isDisposed = false;
+  bool _isEnabled = true;
+
+  /// Whether event trigger evaluation is currently active.
+  bool get isEnabled => _isEnabled;
+
+  /// Pause event-triggered recording without unsubscribing. Matched events
+  /// are ignored until [enable] is called. Does not affect manual
+  /// `startRecording()` / `stopRecording()` or auto-record.
+  void disable() {
+    _isEnabled = false;
+    _logger.info('Event triggers disabled', tag: 'triggers');
+  }
+
+  /// Resume event-triggered recording. Triggers are enabled by default at
+  /// SDK initialization.
+  void enable() {
+    _isEnabled = true;
+    _logger.info('Event triggers enabled', tag: 'triggers');
+  }
 
   /// Replace the active trigger set. A non-empty map activates the bridge
   /// subscription; a null/empty map cancels it. Safe to call repeatedly.
@@ -82,6 +101,13 @@ final class TriggerService {
   }
 
   void _onEvent(MixpanelEvent event) {
+    if (!_isEnabled) {
+      _logger.debug(
+        "Event triggers disabled, ignoring event: '${event.eventName}'",
+        tag: 'triggers',
+      );
+      return;
+    }
     final percentage = _evaluator.shouldStartRecording(
       event.eventName,
       event.properties,

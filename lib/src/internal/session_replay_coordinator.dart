@@ -127,6 +127,20 @@ class SessionReplayCoordinator implements WidgetCoordinator {
   /// Debug options configuration (null = debug disabled)
   DebugOptions? get debugOptions => _debugOptions;
 
+  /// Whether the SDK is allowed to evaluate tracked events against
+  /// Event Triggers. Reflects the user-controlled toggle only — does
+  /// not imply any triggers are actually configured or being evaluated.
+  bool get isEventTriggersEnabled => _triggerService.isEnabled;
+
+  /// Opt out of trigger evaluation. Matched events stop firing recording.
+  /// No-op when no triggers are configured.
+  void disableEventTriggers() => _triggerService.disable();
+
+  /// Opt back in to trigger evaluation. Enabled by default at SDK init.
+  /// Does not cause triggers to be evaluated unless remote settings has
+  /// delivered any.
+  void enableEventTriggers() => _triggerService.enable();
+
   /// Get the replay ID of the current recording session
   ///
   /// Returns the session ID when recording is active (initializing or recording),

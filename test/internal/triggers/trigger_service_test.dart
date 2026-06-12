@@ -132,6 +132,30 @@ void main() {
     expect(fired, isEmpty);
   });
 
+  test('disable() suppresses callbacks; enable() restores them', () async {
+    service.updateTriggers({'Login': const EventTrigger(percentage: 100)});
+
+    // Default: enabled — fires.
+    expect(service.isEnabled, isTrue);
+    MixpanelEventBridge.notifyListeners(eventName: 'Login');
+    await Future<void>.delayed(Duration.zero);
+    expect(fired, [100]);
+
+    // Disabled — callback suppressed even though the trigger matches.
+    service.disable();
+    expect(service.isEnabled, isFalse);
+    MixpanelEventBridge.notifyListeners(eventName: 'Login');
+    await Future<void>.delayed(Duration.zero);
+    expect(fired, [100]);
+
+    // Re-enabled — fires again.
+    service.enable();
+    expect(service.isEnabled, isTrue);
+    MixpanelEventBridge.notifyListeners(eventName: 'Login');
+    await Future<void>.delayed(Duration.zero);
+    expect(fired, [100, 100]);
+  });
+
   test('events that pass propertyFilters fire the callback', () async {
     service.updateTriggers({
       'Purchase': const EventTrigger(
