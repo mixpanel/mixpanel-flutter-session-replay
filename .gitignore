@@ -56,3 +56,8 @@
 # Used to hold additional context for claude (ex other platform source code source)
 reference/
 references/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
