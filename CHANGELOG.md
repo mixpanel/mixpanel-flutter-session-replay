@@ -1,5 +1,8 @@
 # Changelog
 
+> [!NOTE]
+> This repository has been archived. Development of `mixpanel_flutter_session_replay` has moved to [mixpanel-flutter](https://github.com/mixpanel/mixpanel-flutter); future release notes will be tracked there.
+
 ## [v0.1.0-beta.4](https://github.com/mixpanel/mixpanel-flutter-session-replay/tree/v0.1.0-beta.4) (2026-06-12)
 
 ### Features
