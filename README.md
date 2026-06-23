@@ -11,5 +11,5 @@
 |---|---|
 | Source code & issues | [github.com/mixpanel/mixpanel-flutter](https://github.com/mixpanel/mixpanel-flutter) |
 | Package | [pub.dev/packages/mixpanel_flutter_session_replay](https://pub.dev/packages/mixpanel_flutter_session_replay) |
-| Documentation | [Mixpanel Session Replay docs](https://docs.mixpanel.com/docs/session-replay) |
+| Documentation | [Mixpanel Flutter Session Replay docs](https://docs.mixpanel.com/docs/tracking-methods/sdks/flutter/flutter-replay) |
 | Support | [mixpanel.com/get-support](https://mixpanel.com/get-support) |
